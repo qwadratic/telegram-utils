@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Reliably export and incrementally sync Telegram chats to searchable Markdown without risking account bans or data loss.
-**Current focus:** Phase 3 - Message Export Engine - COMPLETE
+**Current focus:** Phase 4 - Incremental Sync
 
 ## Current Position
 
-Phase: 3 of 4 (Core Message Export) - COMPLETE
-Plan: 3 of 3 in current phase - COMPLETE
-Status: Phase complete, ready for Phase 4
-Last activity: 2026-02-03 - Completed 03-03-PLAN.md (Export Orchestration & CLI)
+Phase: 4 of 4 (Incremental Sync)
+Plan: 1 of 3 in current phase - COMPLETE
+Status: In progress
+Last activity: 2026-02-03 - Completed 04-01-PLAN.md (Sync State Foundations)
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 4min
-- Total execution time: 30min
+- Total execution time: 33min
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [███████░░░] 70%
 | 01-foundation-authentication | 2 | 18min | 9min |
 | 02-folder-chat-discovery | 2 | 6min | 3min |
 | 03-core-message-export | 3 | 6min | 2min |
+| 04-incremental-sync | 1 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (4min), 03-01 (1min), 03-02 (2min), 03-03 (3min)
-- Trend: Very fast execution, Phase 3 complete
+- Last 5 plans: 03-01 (1min), 03-02 (2min), 03-03 (3min), 04-01 (3min)
+- Trend: Consistent 2-3min execution per plan
 
 *Updated after each plan completion*
 
@@ -64,6 +65,9 @@ Recent decisions affecting current work:
 - [03-02]: Messages reversed per-month-group for memory efficiency
 - [03-03]: getPeer used instead of getChat - returns User | Chat union, both have displayName
 - [03-03]: Duration formatted as "Xm Ys" or just "Ys" if under a minute
+- [04-01]: SyncState tracks lastMessageId, lastSyncedAt, chatName per chat
+- [04-01]: FetchMessagesOptions interface replaces positional onProgress parameter
+- [04-01]: minId is exclusive (fetches ID > minId) matching mtcute semantics
 
 ### Pending Todos
 
@@ -75,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-03T05:06:08Z
-Stopped at: Completed 03-03-PLAN.md (Export Orchestration & CLI) - Phase 3 complete
+Last session: 2026-02-03T12:44:00Z
+Stopped at: Completed 04-01-PLAN.md (Sync State Foundations)
 Resume file: None
