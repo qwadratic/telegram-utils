@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Reliably export and incrementally sync Telegram chats to searchable Markdown without risking account bans or data loss.
-**Current focus:** Phase 4 - Incremental Sync
+**Current focus:** Phase 4 - Incremental Sync - COMPLETE
 
 ## Current Position
 
-Phase: 4 of 4 (Incremental Sync)
-Plan: 2 of 3 in current phase - COMPLETE
-Status: In progress
-Last activity: 2026-02-03 - Completed 04-02-PLAN.md (File Append & Change Detection)
+Phase: 4 of 4 (Incremental Sync) - COMPLETE
+Plan: 3 of 3 in current phase - COMPLETE
+Status: All phases complete - MVP ready
+Last activity: 2026-02-03 - Completed 04-03-PLAN.md (Sync Orchestration & CLI)
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 4min
-- Total execution time: 34min
+- Total execution time: 36min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [█████████░] 90%
 | 01-foundation-authentication | 2 | 18min | 9min |
 | 02-folder-chat-discovery | 2 | 6min | 3min |
 | 03-core-message-export | 3 | 6min | 2min |
-| 04-incremental-sync | 2 | 4min | 2min |
+| 04-incremental-sync | 3 | 6min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (2min), 03-03 (3min), 04-01 (3min), 04-02 (1min)
+- Last 5 plans: 03-03 (3min), 04-01 (3min), 04-02 (1min), 04-03 (2min)
 - Trend: Consistent 1-3min execution per plan
 
 *Updated after each plan completion*
@@ -71,17 +71,22 @@ Recent decisions affecting current work:
 - [04-02]: Sync file operations (readFileSync/writeFileSync) for append module
 - [04-02]: Skip non-existent files during append - no historical file creation
 - [04-02]: New folders handled as special case - all chats marked new
+- [04-03]: First sync detection based on empty state.chats (not config)
+- [04-03]: Old month messages logged as warnings rather than silently dropped
+- [04-03]: Deduplicate chat IDs before sync to avoid processing same chat twice
 
 ### Pending Todos
 
-None yet.
+None - MVP complete.
 
 ### Blockers/Concerns
 
-None yet.
+**MVP Limitations (intentionally deferred):**
+- Deleted messages: Detection requires re-fetching entire history
+- Edited messages: Original version not available without prior storage
 
 ## Session Continuity
 
-Last session: 2026-02-03T12:43:25Z
-Stopped at: Completed 04-02-PLAN.md (File Append & Change Detection)
+Last session: 2026-02-03T12:48:30Z
+Stopped at: Completed 04-03-PLAN.md (Sync Orchestration & CLI) - Phase 4 complete - MVP ready
 Resume file: None
