@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Reliably export and incrementally sync Telegram chats to searchable Markdown without risking account bans or data loss.
-**Current focus:** Phase 4 - Incremental Sync - COMPLETE
+**Current focus:** Phase 4 - Incremental Sync - COMPLETE (including gap closure)
 
 ## Current Position
 
 Phase: 4 of 4 (Incremental Sync) - COMPLETE
-Plan: 3 of 3 in current phase - COMPLETE
-Status: All phases complete - MVP ready
-Last activity: 2026-02-03 - Completed 04-03-PLAN.md (Sync Orchestration & CLI)
+Plan: 4 of 4 in current phase (including gap closure) - COMPLETE
+Status: All phases complete - MVP ready with gap closure fixes
+Last activity: 2026-02-03 - Completed 04-04-PLAN.md (Folder Selection Pre-selection Fix)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 4min
-- Total execution time: 36min
+- Total plans completed: 11
+- Average duration: 3.4min
+- Total execution time: 37min
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [██████████] 100%
 | 01-foundation-authentication | 2 | 18min | 9min |
 | 02-folder-chat-discovery | 2 | 6min | 3min |
 | 03-core-message-export | 3 | 6min | 2min |
-| 04-incremental-sync | 3 | 6min | 2min |
+| 04-incremental-sync | 4 | 7min | 1.75min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (3min), 04-01 (3min), 04-02 (1min), 04-03 (2min)
-- Trend: Consistent 1-3min execution per plan
+- Last 5 plans: 04-01 (3min), 04-02 (1min), 04-03 (2min), 04-04 (38s)
+- Trend: Consistent sub-3min execution per plan
 
 *Updated after each plan completion*
 
@@ -74,6 +74,7 @@ Recent decisions affecting current work:
 - [04-03]: First sync detection based on empty state.chats (not config)
 - [04-03]: Old month messages logged as warnings rather than silently dropped
 - [04-03]: Deduplicate chat IDs before sync to avoid processing same chat twice
+- [04-04]: Optional currentSelection parameter to selectFolders for backward compatibility
 
 ### Pending Todos
 
@@ -93,6 +94,6 @@ None - MVP complete.
 
 ## Session Continuity
 
-Last session: 2026-02-03T12:58:00Z
-Stopped at: Completed quick/001-PLAN.md (Contact Import CSV)
+Last session: 2026-02-03T20:46:10Z
+Stopped at: Completed 04-04-PLAN.md (Folder Selection Pre-selection Fix)
 Resume file: None
