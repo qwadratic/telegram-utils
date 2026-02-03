@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Reliably export and incrementally sync Telegram chats to searchable Markdown without risking account bans or data loss.
-**Current focus:** Phase 3 - Message Export Engine (in progress)
+**Current focus:** Phase 3 - Message Export Engine - COMPLETE
 
 ## Current Position
 
-Phase: 3 of 4 (Core Message Export)
-Plan: 2 of 3 in current phase - COMPLETE
-Status: In progress
-Last activity: 2026-02-03 - Completed 03-02-PLAN.md (Message Formatting & Writing)
+Phase: 3 of 4 (Core Message Export) - COMPLETE
+Plan: 3 of 3 in current phase - COMPLETE
+Status: Phase complete, ready for Phase 4
+Last activity: 2026-02-03 - Completed 03-03-PLAN.md (Export Orchestration & CLI)
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 5min
-- Total execution time: 27min
+- Total plans completed: 7
+- Average duration: 4min
+- Total execution time: 30min
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [██████░░░░] 60%
 |-------|-------|-------|----------|
 | 01-foundation-authentication | 2 | 18min | 9min |
 | 02-folder-chat-discovery | 2 | 6min | 3min |
-| 03-core-message-export | 2 | 3min | 1.5min |
+| 03-core-message-export | 3 | 6min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (2min), 02-02 (4min), 03-01 (1min), 03-02 (2min)
-- Trend: Very fast execution, utility modules are quick
+- Last 5 plans: 02-02 (4min), 03-01 (1min), 03-02 (2min), 03-03 (3min)
+- Trend: Very fast execution, Phase 3 complete
 
 *Updated after each plan completion*
 
@@ -62,6 +62,8 @@ Recent decisions affecting current work:
 - [03-02]: PeerSender imported from @mtcute/node (re-exports from @mtcute/core)
 - [03-02]: Reply quotes replace newlines with spaces for clean blockquote rendering
 - [03-02]: Messages reversed per-month-group for memory efficiency
+- [03-03]: getPeer used instead of getChat - returns User | Chat union, both have displayName
+- [03-03]: Duration formatted as "Xm Ys" or just "Ys" if under a minute
 
 ### Pending Todos
 
@@ -73,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-03T05:01:08Z
-Stopped at: Completed 03-02-PLAN.md (Message Formatting & Writing)
+Last session: 2026-02-03T05:06:08Z
+Stopped at: Completed 03-03-PLAN.md (Export Orchestration & CLI) - Phase 3 complete
 Resume file: None
