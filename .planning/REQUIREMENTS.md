@@ -17,7 +17,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **FOLD-01**: User can list all Telegram folders (DialogFilters) with names and IDs
 - [x] **FOLD-02**: User can select folders to track, tool enumerates all chats within selected folders
 - [x] **FOLD-03**: Selected folder IDs persist in config file between runs
-- [ ] **FOLD-04**: On startup, tool detects and logs new folders or new chats in tracked folders
+- [x] **FOLD-04**: On startup, tool detects and logs new folders or new chats in tracked folders
 
 ### Message Export
 
@@ -35,10 +35,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Incremental Sync
 
-- [ ] **SYNC-01**: Config tracks last exported message ID per chat
-- [ ] **SYNC-02**: Subsequent runs fetch only messages newer than last exported (using minId)
-- [ ] **SYNC-03**: New messages are appended to existing monthly files
-- [ ] **SYNC-04**: Startup logs any new chats or folders detected in tracked folders
+- [x] **SYNC-01**: Config tracks last exported message ID per chat
+- [x] **SYNC-02**: Subsequent runs fetch only messages newer than last exported (using minId)
+- [x] **SYNC-03**: New messages are appended to existing monthly files
+- [x] **SYNC-04**: Startup logs any new chats or folders detected in tracked folders
 
 ### Safety
 
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOLD-01 | Phase 2 | Complete |
 | FOLD-02 | Phase 2 | Complete |
 | FOLD-03 | Phase 2 | Complete |
-| FOLD-04 | Phase 4 | Pending |
+| FOLD-04 | Phase 4 | Complete |
 | MESG-01 | Phase 3 | Complete |
 | MESG-02 | Phase 3 | Complete |
 | MESG-03 | Phase 3 | Complete |
@@ -99,10 +99,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OUTP-01 | Phase 3 | Complete |
 | OUTP-02 | Phase 3 | Complete |
 | OUTP-03 | Phase 3 | Complete |
-| SYNC-01 | Phase 4 | Pending |
-| SYNC-02 | Phase 4 | Pending |
-| SYNC-03 | Phase 4 | Pending |
-| SYNC-04 | Phase 4 | Pending |
+| SYNC-01 | Phase 4 | Complete |
+| SYNC-02 | Phase 4 | Complete |
+| SYNC-03 | Phase 4 | Complete |
+| SYNC-04 | Phase 4 | Complete |
 | SAFE-01 | Phase 1 | Complete |
 | SAFE-02 | Phase 3 | Complete |
 

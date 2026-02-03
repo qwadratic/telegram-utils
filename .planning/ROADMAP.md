@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation & Authentication** - Authenticated mtcute client with session persistence and flood wait handling
 - [x] **Phase 2: Folder & Chat Discovery** - Enumerate folders, list chats, select and persist tracking config
 - [x] **Phase 3: Core Message Export** - Fetch messages, format to Markdown, write monthly files with rate limiting
-- [ ] **Phase 4: Incremental Sync** - Track sync state, fetch only new messages, detect new chats/folders
+- [x] **Phase 4: Incremental Sync** - Track sync state, fetch only new messages, detect new chats/folders
 
 ## Phase Details
 
@@ -77,9 +77,9 @@ Plans:
 **Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 04-01-PLAN.md — Sync state module and incremental fetch (minId support)
-- [ ] 04-02-PLAN.md — File append logic and change detection with prompts
-- [ ] 04-03-PLAN.md — Sync orchestration and CLI integration
+- [x] 04-01-PLAN.md — Sync state module and incremental fetch (minId support)
+- [x] 04-02-PLAN.md — File append logic and change detection with prompts
+- [x] 04-03-PLAN.md — Sync orchestration and CLI integration
 
 ## Progress
 
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation & Authentication | 2/2 | Complete | 2026-02-03 |
 | 2. Folder & Chat Discovery | 2/2 | Complete | 2026-02-03 |
 | 3. Core Message Export | 3/3 | Complete | 2026-02-03 |
-| 4. Incremental Sync | 0/3 | Not started | - |
+| 4. Incremental Sync | 3/3 | Complete | 2026-02-03 |
 
 ---
 *Roadmap created: 2026-02-03*
