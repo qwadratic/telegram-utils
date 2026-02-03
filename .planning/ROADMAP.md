@@ -58,11 +58,12 @@ Plans:
   3. Messages include sender info, timestamps, reply references, and attachment markers
   4. Text formatting (bold, italic, links, code) is preserved as Markdown
   5. Requests are rate-limited with 1.5s delays and jitter — no FLOOD_WAIT errors in normal operation
-**Plans**: TBD
+**Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 03-01: Message fetching with rate limiting
-- [ ] 03-02: Markdown formatting and file output
+- [ ] 03-01-PLAN.md — Message fetching with rate limiting, filename sanitization
+- [ ] 03-02-PLAN.md — Message formatting and monthly file writer
+- [ ] 03-03-PLAN.md — Export orchestration and CLI command
 
 ### Phase 4: Incremental Sync
 **Goal**: User can run the tool repeatedly to sync only new messages since last export
@@ -88,7 +89,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Foundation & Authentication | 2/2 | Complete | 2026-02-03 |
 | 2. Folder & Chat Discovery | 2/2 | Complete | 2026-02-03 |
-| 3. Core Message Export | 0/2 | Not started | - |
+| 3. Core Message Export | 0/3 | Not started | - |
 | 4. Incremental Sync | 0/2 | Not started | - |
 
 ---
