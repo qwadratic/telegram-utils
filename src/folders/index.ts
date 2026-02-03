@@ -72,15 +72,17 @@ export function getChatIdsFromFolder(folder: EnumerableFolder): number[] {
 /**
  * Interactive folder selection using multiselect prompt.
  * Returns array of selected folder IDs.
+ * @param currentSelection - Optional array of folder IDs to pre-select
  */
-export async function selectFolders(folders: FolderInfo[]): Promise<number[]> {
+export async function selectFolders(folders: FolderInfo[], currentSelection?: number[]): Promise<number[]> {
   const selected = await multiselect({
     message: 'Select folders to track:',
     options: folders.map(f => ({
       value: f.id,
       label: `${f.title} (${f.chatCount} chats)`
     })),
-    required: true
+    required: true,
+    initialValues: currentSelection
   })
 
   if (isCancel(selected)) {
@@ -137,7 +139,7 @@ export async function syncFolderConfig(tg: TelegramClient, forceSelect = false):
   if (isFirstRun || forceSelect) {
     // First run or forced re-selection: show selection prompt
     console.log(`Found ${folders.length} folder(s):`)
-    trackedFolderIds = await selectFolders(folders)
+    trackedFolderIds = await selectFolders(folders, Object.keys(config.trackedFolders).map(Number))
   } else {
     // Subsequent run: use existing tracked folders
     trackedFolderIds = Object.keys(config.trackedFolders).map(Number)
