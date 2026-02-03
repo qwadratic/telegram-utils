@@ -6,7 +6,7 @@ import { createClient } from './client.js'
 import { ensureAuthenticated } from './auth.js'
 import { syncFolderConfig } from './folders/index.js'
 import { loadConfig } from './config/index.js'
-import { exportChats } from './messages/index.js'
+import { syncChats } from './sync/index.js'
 
 /**
  * Format duration in milliseconds to human-readable string.
@@ -129,16 +129,26 @@ program
           return
         }
 
-        // Run export
-        const result = await exportChats(tg, config)
+        // Run incremental sync
+        const result = await syncChats(tg, config)
 
-        // Display completion summary
+        // Display sync summary
         const duration = formatDuration(result.durationMs)
-        if (result.chatsSkipped > 0) {
-          console.log(chalk.green(`\nExported ${result.chatsExported} chats (${result.chatsSkipped} skipped), ${result.messagesExported} messages in ${duration}`))
-        } else {
-          console.log(chalk.green(`\nExported ${result.chatsExported} chats, ${result.messagesExported} messages in ${duration}`))
+        const parts = [
+          `${result.chatsProcessed} chats synced`,
+          `${result.messagesAppended} messages`,
+          `${result.filesUpdated} files updated`,
+        ]
+        if (result.newChatsAdded > 0) {
+          parts.push(`${result.newChatsAdded} new chats added`)
         }
+        if (result.newFoldersAdded > 0) {
+          parts.push(`${result.newFoldersAdded} new folders tracked`)
+        }
+        if (result.chatsSkipped > 0) {
+          parts.push(`${result.chatsSkipped} skipped`)
+        }
+        console.log(chalk.green(`\n${parts.join(', ')} in ${duration}`))
 
       } finally {
         await tg.destroy()
