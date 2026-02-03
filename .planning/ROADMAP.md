@@ -42,11 +42,11 @@ Plans:
   1. User can list all Telegram folders with their names and chat counts
   2. User can select folders to track — tool enumerates all chats within selected folders
   3. Selected folder IDs persist in config file between runs
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 02-01: Folder enumeration and chat listing
-- [ ] 02-02: Folder selection and config persistence
+- [ ] 02-01-PLAN.md — Folders module and config management (listFolders, loadConfig/saveConfig)
+- [ ] 02-02-PLAN.md — Folder selection UX, diff tracking, CLI folders command
 
 ### Phase 3: Core Message Export
 **Goal**: User can export complete message history from tracked folders to structured Markdown files
