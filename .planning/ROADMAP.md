@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Authentication** - Authenticated mtcute client with session persistence and flood wait handling
 - [x] **Phase 2: Folder & Chat Discovery** - Enumerate folders, list chats, select and persist tracking config
-- [ ] **Phase 3: Core Message Export** - Fetch messages, format to Markdown, write monthly files with rate limiting
+- [x] **Phase 3: Core Message Export** - Fetch messages, format to Markdown, write monthly files with rate limiting
 - [ ] **Phase 4: Incremental Sync** - Track sync state, fetch only new messages, detect new chats/folders
 
 ## Phase Details
@@ -61,9 +61,9 @@ Plans:
 **Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 03-01-PLAN.md — Message fetching with rate limiting, filename sanitization
-- [ ] 03-02-PLAN.md — Message formatting and monthly file writer
-- [ ] 03-03-PLAN.md — Export orchestration and CLI command
+- [x] 03-01-PLAN.md — Message fetching with rate limiting, filename sanitization
+- [x] 03-02-PLAN.md — Message formatting and monthly file writer
+- [x] 03-03-PLAN.md — Export orchestration and CLI command
 
 ### Phase 4: Incremental Sync
 **Goal**: User can run the tool repeatedly to sync only new messages since last export
@@ -89,7 +89,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Foundation & Authentication | 2/2 | Complete | 2026-02-03 |
 | 2. Folder & Chat Discovery | 2/2 | Complete | 2026-02-03 |
-| 3. Core Message Export | 0/3 | Not started | - |
+| 3. Core Message Export | 3/3 | Complete | 2026-02-03 |
 | 4. Incremental Sync | 0/2 | Not started | - |
 
 ---

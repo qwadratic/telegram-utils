@@ -21,17 +21,17 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Message Export
 
-- [ ] **MESG-01**: Tool fetches message history with ID, timestamp, and text content
-- [ ] **MESG-02**: Each message includes sender's first name, last name, and @username if available
-- [ ] **MESG-03**: Messages include reply_to message ID when replying to another message
-- [ ] **MESG-04**: Messages with attachments are marked with attachment type (no media download)
-- [ ] **MESG-05**: Text formatting (bold, italic, links, code) is preserved as Markdown
+- [x] **MESG-01**: Tool fetches message history with ID, timestamp, and text content
+- [x] **MESG-02**: Each message includes sender's first name, last name, and @username if available
+- [x] **MESG-03**: Messages include reply_to message ID when replying to another message
+- [x] **MESG-04**: Messages with attachments are marked with attachment type (no media download)
+- [x] **MESG-05**: Text formatting (bold, italic, links, code) is preserved as Markdown
 
 ### Output Format
 
-- [ ] **OUTP-01**: Messages are written to monthly files: `archive/YYYY-MM/chat-name.md`
-- [ ] **OUTP-02**: Each file has YAML frontmatter with chat_name, chat_id, first_message_id, last_message_id, exported_at
-- [ ] **OUTP-03**: Filenames are sanitized; original chat name preserved in frontmatter; fallback to chat ID if all special chars
+- [x] **OUTP-01**: Messages are written to monthly files: `archive/YYYY-MM/chat-name.md`
+- [x] **OUTP-02**: Each file has YAML frontmatter with chat_name, chat_id, first_message_id, last_message_id, exported_at
+- [x] **OUTP-03**: Filenames are sanitized; original chat name preserved in frontmatter; fallback to chat ID if all special chars
 
 ### Incremental Sync
 
@@ -43,7 +43,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Safety
 
 - [x] **SAFE-01**: Tool respects FLOOD_WAIT errors, waiting the required duration before retrying
-- [ ] **SAFE-02**: Requests are rate-limited with 1.5s delays and random jitter between batches
+- [x] **SAFE-02**: Requests are rate-limited with 1.5s delays and random jitter between batches
 
 ## v2 Requirements
 
@@ -91,20 +91,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOLD-02 | Phase 2 | Complete |
 | FOLD-03 | Phase 2 | Complete |
 | FOLD-04 | Phase 4 | Pending |
-| MESG-01 | Phase 3 | Pending |
-| MESG-02 | Phase 3 | Pending |
-| MESG-03 | Phase 3 | Pending |
-| MESG-04 | Phase 3 | Pending |
-| MESG-05 | Phase 3 | Pending |
-| OUTP-01 | Phase 3 | Pending |
-| OUTP-02 | Phase 3 | Pending |
-| OUTP-03 | Phase 3 | Pending |
+| MESG-01 | Phase 3 | Complete |
+| MESG-02 | Phase 3 | Complete |
+| MESG-03 | Phase 3 | Complete |
+| MESG-04 | Phase 3 | Complete |
+| MESG-05 | Phase 3 | Complete |
+| OUTP-01 | Phase 3 | Complete |
+| OUTP-02 | Phase 3 | Complete |
+| OUTP-03 | Phase 3 | Complete |
 | SYNC-01 | Phase 4 | Pending |
 | SYNC-02 | Phase 4 | Pending |
 | SYNC-03 | Phase 4 | Pending |
 | SYNC-04 | Phase 4 | Pending |
 | SAFE-01 | Phase 1 | Complete |
-| SAFE-02 | Phase 3 | Pending |
+| SAFE-02 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 20 total
