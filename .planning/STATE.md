@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 ## Current Position
 
 Phase: 3 of 4 (Core Message Export)
-Plan: 1 of 3 in current phase - COMPLETE
+Plan: 2 of 3 in current phase - COMPLETE
 Status: In progress
-Last activity: 2026-02-03 - Completed 03-01-PLAN.md (Message Fetch & Filename Utilities)
+Last activity: 2026-02-03 - Completed 03-02-PLAN.md (Message Formatting & Writing)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 5min
-- Total execution time: 25min
+- Total execution time: 27min
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01-foundation-authentication | 2 | 18min | 9min |
 | 02-folder-chat-discovery | 2 | 6min | 3min |
-| 03-core-message-export | 1 | 1min | 1min |
+| 03-core-message-export | 2 | 3min | 1.5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (15min), 02-01 (2min), 02-02 (4min), 03-01 (1min)
+- Last 5 plans: 02-01 (2min), 02-02 (4min), 03-01 (1min), 03-02 (2min)
 - Trend: Very fast execution, utility modules are quick
 
 *Updated after each plan completion*
@@ -59,6 +59,9 @@ Recent decisions affecting current work:
 - [03-01]: Messages yielded newest-first from iterHistory; writer layer handles reversal
 - [03-01]: 1.5s + 0-500ms jitter delay prevents Telegram rate limits
 - [03-01]: 200 char filename limit leaves room for path and .md extension
+- [03-02]: PeerSender imported from @mtcute/node (re-exports from @mtcute/core)
+- [03-02]: Reply quotes replace newlines with spaces for clean blockquote rendering
+- [03-02]: Messages reversed per-month-group for memory efficiency
 
 ### Pending Todos
 
@@ -70,6 +73,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-03T04:56:30Z
-Stopped at: Completed 03-01-PLAN.md (Message Fetch & Filename Utilities)
+Last session: 2026-02-03T05:01:08Z
+Stopped at: Completed 03-02-PLAN.md (Message Formatting & Writing)
 Resume file: None
