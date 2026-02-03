@@ -74,11 +74,12 @@ Plans:
   2. Subsequent runs fetch only messages newer than last exported
   3. New messages are appended to existing monthly files (not duplicated)
   4. Startup logs any new chats or folders detected in tracked folders
-**Plans**: TBD
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 04-01: Sync state tracking and incremental fetch
-- [ ] 04-02: Change detection and logging
+- [ ] 04-01-PLAN.md — Sync state module and incremental fetch (minId support)
+- [ ] 04-02-PLAN.md — File append logic and change detection with prompts
+- [ ] 04-03-PLAN.md — Sync orchestration and CLI integration
 
 ## Progress
 
@@ -90,7 +91,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation & Authentication | 2/2 | Complete | 2026-02-03 |
 | 2. Folder & Chat Discovery | 2/2 | Complete | 2026-02-03 |
 | 3. Core Message Export | 3/3 | Complete | 2026-02-03 |
-| 4. Incremental Sync | 0/2 | Not started | - |
+| 4. Incremental Sync | 0/3 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
