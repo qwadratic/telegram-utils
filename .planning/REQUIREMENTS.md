@@ -14,9 +14,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Folder Management
 
-- [ ] **FOLD-01**: User can list all Telegram folders (DialogFilters) with names and IDs
-- [ ] **FOLD-02**: User can select folders to track, tool enumerates all chats within selected folders
-- [ ] **FOLD-03**: Selected folder IDs persist in config file between runs
+- [x] **FOLD-01**: User can list all Telegram folders (DialogFilters) with names and IDs
+- [x] **FOLD-02**: User can select folders to track, tool enumerates all chats within selected folders
+- [x] **FOLD-03**: Selected folder IDs persist in config file between runs
 - [ ] **FOLD-04**: On startup, tool detects and logs new folders or new chats in tracked folders
 
 ### Message Export
@@ -87,9 +87,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | AUTH-01 | Phase 1 | Complete |
 | AUTH-02 | Phase 1 | Complete |
-| FOLD-01 | Phase 2 | Pending |
-| FOLD-02 | Phase 2 | Pending |
-| FOLD-03 | Phase 2 | Pending |
+| FOLD-01 | Phase 2 | Complete |
+| FOLD-02 | Phase 2 | Complete |
+| FOLD-03 | Phase 2 | Complete |
 | FOLD-04 | Phase 4 | Pending |
 | MESG-01 | Phase 3 | Pending |
 | MESG-02 | Phase 3 | Pending |
