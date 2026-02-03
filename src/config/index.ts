@@ -42,3 +42,11 @@ export function saveConfig(config: Config): void {
 
   writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2))
 }
+
+/**
+ * Update config file with new values.
+ * Alias for saveConfig - kept for semantic clarity when modifying existing config.
+ */
+export function updateConfig(config: Config): void {
+  saveConfig(config)
+}
