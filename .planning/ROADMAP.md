@@ -28,11 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Session persists in encrypted SQLite file — subsequent runs skip auth if session valid
   3. FLOOD_WAIT errors are caught and respected — tool waits required duration before retry
   4. CLI entry point exists with Commander.js structure
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 01-01: Project scaffolding and CLI structure
-- [ ] 01-02: Authentication flow and session persistence
+- [ ] 01-01-PLAN.md — Project scaffolding, CLI structure, encrypted storage driver
+- [ ] 01-02-PLAN.md — Authentication flow with session persistence
 
 ### Phase 2: Folder & Chat Discovery
 **Goal**: User can view their Telegram folders and select which ones to track for export
@@ -86,7 +86,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Authentication | 0/2 | Not started | - |
+| 1. Foundation & Authentication | 0/2 | Planned | - |
 | 2. Folder & Chat Discovery | 0/2 | Not started | - |
 | 3. Core Message Export | 0/2 | Not started | - |
 | 4. Incremental Sync | 0/2 | Not started | - |
