@@ -12,7 +12,7 @@ This roadmap delivers a TypeScript CLI tool that exports Telegram chat history t
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation & Authentication** - Authenticated mtcute client with session persistence and flood wait handling
+- [x] **Phase 1: Foundation & Authentication** - Authenticated mtcute client with session persistence and flood wait handling
 - [ ] **Phase 2: Folder & Chat Discovery** - Enumerate folders, list chats, select and persist tracking config
 - [ ] **Phase 3: Core Message Export** - Fetch messages, format to Markdown, write monthly files with rate limiting
 - [ ] **Phase 4: Incremental Sync** - Track sync state, fetch only new messages, detect new chats/folders
@@ -31,8 +31,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Project scaffolding, CLI structure, encrypted storage driver
-- [ ] 01-02-PLAN.md — Authentication flow with session persistence
+- [x] 01-01-PLAN.md — Project scaffolding, CLI structure, encrypted storage driver
+- [x] 01-02-PLAN.md — Authentication flow with session persistence
 
 ### Phase 2: Folder & Chat Discovery
 **Goal**: User can view their Telegram folders and select which ones to track for export
@@ -86,7 +86,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Authentication | 0/2 | Planned | - |
+| 1. Foundation & Authentication | 2/2 | Complete | 2026-02-03 |
 | 2. Folder & Chat Discovery | 0/2 | Not started | - |
 | 3. Core Message Export | 0/2 | Not started | - |
 | 4. Incremental Sync | 0/2 | Not started | - |

@@ -9,8 +9,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can authenticate with phone number, SMS/call code, and optional 2FA password
-- [ ] **AUTH-02**: Session is stored in password-encrypted SQLite file, decrypted at runtime
+- [x] **AUTH-01**: User can authenticate with phone number, SMS/call code, and optional 2FA password
+- [x] **AUTH-02**: Session is stored in password-encrypted SQLite file, decrypted at runtime
 
 ### Folder Management
 
@@ -42,7 +42,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Safety
 
-- [ ] **SAFE-01**: Tool respects FLOOD_WAIT errors, waiting the required duration before retrying
+- [x] **SAFE-01**: Tool respects FLOOD_WAIT errors, waiting the required duration before retrying
 - [ ] **SAFE-02**: Requests are rate-limited with 1.5s delays and random jitter between batches
 
 ## v2 Requirements
@@ -85,8 +85,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
 | FOLD-01 | Phase 2 | Pending |
 | FOLD-02 | Phase 2 | Pending |
 | FOLD-03 | Phase 2 | Pending |
@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SYNC-02 | Phase 4 | Pending |
 | SYNC-03 | Phase 4 | Pending |
 | SYNC-04 | Phase 4 | Pending |
-| SAFE-01 | Phase 1 | Pending |
+| SAFE-01 | Phase 1 | Complete |
 | SAFE-02 | Phase 3 | Pending |
 
 **Coverage:**
