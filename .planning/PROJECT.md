@@ -16,7 +16,8 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 
 ### Active
 
-- [ ] Telegram authentication with code + password (no session persistence)
+- [ ] Telegram authentication with code + password
+- [ ] Encrypted session storage (password-protected SQLite)
 - [ ] List user's Telegram folders (DialogFilters)
 - [ ] Select folders to track, store DialogFilter IDs in config
 - [ ] Export all chats from tracked folders
@@ -39,7 +40,6 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 ### Out of Scope
 
 - Media/attachment download — text-only export
-- Session persistence — intentional re-auth each run
 - Archive deletion — only additive updates
 - Real-time sync/daemon mode — manual CLI runs only
 - Multiple account support — single account per run
@@ -61,17 +61,17 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 - **Language**: TypeScript with modern best practices
 - **Library**: mtcute (no alternatives)
 - **Safety**: Read-only operations only, follow Telegram ToS, implement rate limiting
-- **Auth**: Fresh login each run, no session file storage
+- **Auth**: Encrypted session storage (password-protected SQLite)
 - **Storage**: Config in archive root, no external databases
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| No session persistence | User preference for security, accepts re-auth each run | — Pending |
+| Encrypted session storage | Balance security (password protection) with ban prevention (session persistence) | — Pending |
 | Monthly file splits | Manageable file sizes, natural organization for knowledge base | — Pending |
 | Sanitized filenames | Filesystem compatibility, original name preserved in frontmatter | — Pending |
 | Additive-only updates | Prevent accidental data loss, archives are append-only | — Pending |
 
 ---
-*Last updated: 2025-02-03 after initialization*
+*Last updated: 2026-02-03 after requirements definition*
