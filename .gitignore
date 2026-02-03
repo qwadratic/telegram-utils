@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+
+# Session database (contains encrypted auth data)
+data/session.db
+
+# OS files
+.DS_Store
