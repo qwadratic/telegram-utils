@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 04-incremental-sync
 source: 04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md
 started: 2026-02-03T13:55:00Z
-updated: 2026-02-03T14:25:00Z
+updated: 2026-02-03T14:30:00Z
 ---
 
 ## Current Test
@@ -58,27 +58,46 @@ skipped: 1
   reason: "User reported: TimeoutNegativeWarning: -522509 is a negative number from mtcute library during sync"
   severity: minor
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "mtcute ServerSaltManager bug: _scheduleReplace() calculates negative timeout for already-valid salts (validSince in the past)"
+  artifacts:
+    - path: "node_modules/@mtcute/core/network/server-salt.js"
+      issue: "Line 31: salt.validSince * 1e3 - Date.now() yields negative when salt already valid"
+  missing:
+    - "Report upstream issue to https://github.com/mtcute/mtcute"
+    - "Workaround: patch-package to add Math.max(0, ...) guard"
+    - "Or: suppress Node.js TimeoutNegativeWarning (not recommended)"
+  debug_session: ".planning/debug/mtcute-timeout-negative-warning.md"
 
 - truth: "Deleted messages are detected and removed from archive during sync"
   status: failed
   reason: "User reported: deleted 2 last messages from one of the chats and ran export again -- messages did not updated. expected to sync"
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Incremental sync fetches only messages with ID > lastMessageId; previously-synced messages are never re-fetched, so deletions cannot be detected"
+  artifacts:
+    - path: "src/messages/fetch.ts"
+      issue: "fetchMessages uses minId option - only fetches newer messages, never revisits old ones"
+    - path: "src/sync/state.ts"
+      issue: "SyncState.chats[].lastMessageId used as floor for incremental fetch"
+    - path: "src/sync/append.ts"
+      issue: "appendToMonthlyFile only adds content, has no removal/reconciliation logic"
+  missing:
+    - "Full re-fetch mode: option to fetch entire chat history for reconciliation"
+    - "Deletion detection: compare fetched message IDs against archive"
+    - "Archive reconciliation: logic to remove messages that no longer exist in Telegram"
+  debug_session: ".planning/debug/deleted-messages-not-synced.md"
 
 - truth: "Folder selection shows already-selected folders as pre-selected in the list"
   status: failed
   reason: "User reported: when i run --select, already selected folders appear unselected (in suggested list)"
   severity: major
   test: 6
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "selectFolders() doesn't pass initialValues to multiselect() despite config data being available"
+  artifacts:
+    - path: "src/folders/index.ts"
+      issue: "selectFolders() (lines 76-91) missing initialValues parameter"
+  missing:
+    - "Add currentSelection parameter to selectFolders() function signature"
+    - "Pass initialValues to multiselect() options"
+    - "In syncFolderConfig(), pass existing trackedFolderIds to selectFolders() when forceSelect=true"
+  debug_session: ".planning/debug/folder-selection-preselect.md"
