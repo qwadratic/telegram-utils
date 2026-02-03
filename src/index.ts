@@ -7,6 +7,7 @@ import { ensureAuthenticated } from './auth.js'
 import { syncFolderConfig } from './folders/index.js'
 import { loadConfig } from './config/index.js'
 import { syncChats } from './sync/index.js'
+import { importContactsByPhone } from './contacts/import.js'
 
 /**
  * Format duration in milliseconds to human-readable string.
@@ -159,6 +160,55 @@ program
         console.error(chalk.red(`Error: ${e.message}`))
       } else {
         console.error(chalk.red('An unexpected error occurred'))
+      }
+      process.exit(1)
+    }
+  })
+
+program
+  .command('import-contacts')
+  .description('Import contacts by phone numbers, output CSV to stdout')
+  .argument('<phones>', 'Comma-separated phone numbers (e.g., +1234567890,+0987654321)')
+  .action(async (phonesArg: string) => {
+    try {
+      // Parse comma-separated phones
+      const phones = phonesArg.split(',').map(p => p.trim()).filter(Boolean)
+
+      if (phones.length === 0) {
+        console.error('Error: No phone numbers provided')
+        process.exit(1)
+      }
+
+      // Session password via prompt (stderr so it doesn't pollute CSV output)
+      const sessionPass = await password({
+        message: 'Enter session password:'
+      })
+      if (isCancel(sessionPass)) {
+        process.exit(0)
+      }
+
+      const tg = createClient(sessionPass as string)
+
+      try {
+        await tg.connect()
+        await ensureAuthenticated(tg)
+
+        const results = await importContactsByPhone(tg, phones)
+
+        // Output CSV to stdout (header + data)
+        console.log('user_id,phone_number')
+        for (const r of results) {
+          console.log(`${r.userId ?? ''},${r.phone}`)
+        }
+
+      } finally {
+        await tg.destroy()
+      }
+    } catch (e) {
+      if (e instanceof Error) {
+        console.error(`Error: ${e.message}`)
+      } else {
+        console.error('An unexpected error occurred')
       }
       process.exit(1)
     }
