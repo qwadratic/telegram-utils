@@ -112,8 +112,8 @@ export function formatMessage(msg: Message): string {
     output += `[Attachment: ${mediaType}]\n\n`
   }
 
-  // Message text with entities converted to Markdown
-  const text = md.unparse(msg.textWithEntities)
+  // Message text without Markdown escaping
+  const text = msg.text || ''
   if (text) {
     output += `${text}\n\n`
   }

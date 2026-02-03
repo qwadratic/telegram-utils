@@ -13,7 +13,7 @@ This roadmap delivers a TypeScript CLI tool that exports Telegram chat history t
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Authentication** - Authenticated mtcute client with session persistence and flood wait handling
-- [x] **Phase 2: Folder & Chat Discovery** - Enumerate folders, list chats, select and persist tracking config
+- [x] **Phase 2: Folder & Chat Discovery** - Enumerate folders, select for export, persist tracked folder/chat config
 - [x] **Phase 3: Core Message Export** - Fetch messages, format to Markdown, write monthly files with rate limiting
 - [x] **Phase 4: Incremental Sync** - Track sync state, fetch only new messages, detect new chats/folders
 
@@ -35,25 +35,25 @@ Plans:
 - [x] 01-02-PLAN.md — Authentication flow with session persistence
 
 ### Phase 2: Folder & Chat Discovery
-**Goal**: User can view their Telegram folders and select which ones to track for export
+**Goal**: User can view their Telegram folders and select which ones to export
 **Depends on**: Phase 1
 **Requirements**: FOLD-01, FOLD-02, FOLD-03
 **Success Criteria** (what must be TRUE):
   1. User can list all Telegram folders with their names and chat counts
-  2. User can select folders to track — tool enumerates all chats within selected folders
+  2. User can select folders to export — tool enumerates all chats within selected folders
   3. Selected folder IDs persist in config file between runs
 **Plans**: 2 plans in 2 waves
 
 Plans:
 - [x] 02-01-PLAN.md — Folders module and config management (listFolders, loadConfig/saveConfig)
-- [x] 02-02-PLAN.md — Folder selection UX, diff tracking, CLI folders command
+- [x] 02-02-PLAN.md — Folder selection UX, diff tracking, CLI setup command
 
 ### Phase 3: Core Message Export
 **Goal**: User can export complete message history from tracked folders to structured Markdown files
 **Depends on**: Phase 2
 **Requirements**: MESG-01, MESG-02, MESG-03, MESG-04, MESG-05, OUTP-01, OUTP-02, OUTP-03, SAFE-02
 **Success Criteria** (what must be TRUE):
-  1. Messages are written to monthly files at `archive/YYYY-MM/chat-name.md`
+  1. Messages are written to monthly files at `data/archive/YYYY-MM/chat-name.md`
   2. Each file has YAML frontmatter with chat metadata (name, ID, message IDs, export timestamp)
   3. Messages include sender info, timestamps, reply references, and attachment markers
   4. Text formatting (bold, italic, links, code) is preserved as Markdown
@@ -72,8 +72,8 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Config tracks last exported message ID per chat
   2. Subsequent runs fetch only messages newer than last exported
-  3. New messages are appended to existing monthly files (not duplicated)
-  4. Startup logs any new chats or folders detected in tracked folders
+  3. New messages are appended to their corresponding monthly files (not duplicated)
+  4. Export refreshes tracked chats from selected folders before syncing
 **Plans**: 4 plans in 3 waves
 
 Plans:

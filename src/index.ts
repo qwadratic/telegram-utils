@@ -1,11 +1,12 @@
 import 'dotenv/config'
 import { Command } from 'commander'
-import { password, isCancel, intro } from '@clack/prompts'
+import { confirm, password, isCancel, intro } from '@clack/prompts'
 import chalk from 'chalk'
+import { existsSync } from 'node:fs'
 import { createClient } from './client.js'
 import { ensureAuthenticated } from './auth.js'
-import { syncFolderConfig } from './folders/index.js'
-import { loadConfig } from './config/index.js'
+import { refreshTrackedChats, syncFolderConfig } from './folders/index.js'
+import { loadConfig, CONFIG_PATH } from './config/index.js'
 import { syncChats } from './sync/index.js'
 import { importContactsByPhone } from './contacts/import.js'
 
@@ -62,12 +63,12 @@ program
   })
 
 program
-  .command('folders')
-  .description('List and select Telegram folders to track')
+  .command('setup')
+  .description('Select Telegram folders to export')
   .option('--select', 'Force folder re-selection')
   .action(async (options) => {
     try {
-      intro(chalk.cyan('Folder Configuration'))
+      intro(chalk.cyan('Export Setup'))
       const sessionPass = await password({
         message: 'Enter session password:'
       })
@@ -84,7 +85,7 @@ program
         // Ensure user is authenticated before accessing folders
         await ensureAuthenticated(tg)
 
-        // Sync folder config (first run: select, subsequent: diff)
+        // Sync setup config (first run: select, subsequent: refresh)
         await syncFolderConfig(tg, options.select)
 
       } finally {
@@ -122,17 +123,30 @@ program
         // Ensure user is authenticated
         await ensureAuthenticated(tg)
 
-        // Load config and check for tracked folders
-        const config = loadConfig()
-        const totalChats = Object.values(config.trackedFolders).flat().length
+        // Load config and ensure folders are selected
+        let config = loadConfig()
+        if (config.trackedFolderIds.length === 0) {
+          const shouldSelect = await confirm({
+            message: 'No folders selected. Run setup to choose folders for export?'
+          })
+          if (isCancel(shouldSelect) || !shouldSelect) {
+            console.log(chalk.yellow('No folders selected. Export cancelled.'))
+            return
+          }
+          await syncFolderConfig(tg, true)
+          config = loadConfig()
+        }
+
+        const refreshed = await refreshTrackedChats(tg, config)
+        const totalChats = refreshed.config.trackedChatIds.length
 
         if (totalChats === 0) {
-          console.log(chalk.yellow('No folders tracked. Run "symbiotic-chats folders" first to select folders.'))
+          console.log(chalk.yellow('No chats found in selected folders. Run "symbiotic-chats setup --select" to update selection.'))
           return
         }
 
         // Run incremental sync
-        const result = await syncChats(tg, config)
+        const result = await syncChats(tg, refreshed.config)
 
         // Display sync summary
         const duration = formatDuration(result.durationMs)
@@ -148,7 +162,7 @@ program
           parts.push(`${result.newFoldersAdded} new folders tracked`)
         }
         if (result.chatsSkipped > 0) {
-          parts.push(`${result.chatsSkipped} skipped`)
+          parts.push(`${result.chatsSkipped} empty chats skipped`)
         }
         console.log(chalk.green(`\n${parts.join(', ')} in ${duration}`))
 

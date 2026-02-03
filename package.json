@@ -5,15 +5,22 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "tsx --trace-warnings src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
-  "keywords": ["telegram", "export", "markdown", "cli"],
+  "keywords": [
+    "telegram",
+    "export",
+    "markdown",
+    "cli"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@clack/prompts": "^1.0.0",
+    "@mtcute/core": "^0.27.8",
+    "@mtcute/markdown-parser": "^0.27.8",
     "@mtcute/node": "^0.27.8",
     "better-sqlite3-multiple-ciphers": "^12.6.2",
     "chalk": "^5.6.2",

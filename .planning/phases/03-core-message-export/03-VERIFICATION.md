@@ -18,7 +18,7 @@ score: 13/13 must-haves verified
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Messages are written to monthly files at `archive/YYYY-MM/chat-name.md` | ✓ VERIFIED | writer.ts:107 creates `archive/{yearMonth}` directory structure, filenames sanitized |
+| 1 | Messages are written to monthly files at `data/archive/YYYY-MM/chat-name.md` | ✓ VERIFIED | writer.ts:107 creates `data/archive/{yearMonth}` directory structure, filenames sanitized |
 | 2 | Each file has YAML frontmatter with chat metadata | ✓ VERIFIED | writer.ts:51-70 createFrontmatter() includes chat_name, chat_id, first_message_id, last_message_id, exported_at |
 | 3 | Messages include sender info, timestamps, reply references, and attachment markers | ✓ VERIFIED | format.ts:75-124 formatMessage() includes all metadata fields with proper formatting |
 | 4 | Text formatting (bold, italic, links, code) is preserved as Markdown | ✓ VERIFIED | format.ts:116 uses md.unparse(msg.textWithEntities) from @mtcute/markdown-parser |
@@ -41,7 +41,7 @@ score: 13/13 must-haves verified
 | `src/messages/fetch.ts` | Message fetching with rate limiting | ✓ VERIFIED | 51 lines, exports fetchMessages generator, uses iterHistory with 1.5s+jitter delays |
 | `src/utils/filename.ts` | Filename sanitization | ✓ VERIFIED | 57 lines, handles invalid chars, Windows reserved names, length truncation |
 | `src/messages/format.ts` | Message-to-Markdown formatting | ✓ VERIFIED | 124 lines, exports formatMessage and formatSender, uses md.unparse for entity conversion |
-| `src/messages/writer.ts` | Monthly file writer with frontmatter | ✓ VERIFIED | 132 lines, creates archive/YYYY-MM structure, YAML frontmatter, chronological ordering |
+| `src/messages/writer.ts` | Monthly file writer with frontmatter | ✓ VERIFIED | 132 lines, creates data/archive/YYYY-MM structure, YAML frontmatter, chronological ordering |
 | `src/messages/index.ts` | Export orchestration | ✓ VERIFIED | 122 lines, exportChats with spinner, progress, empty chat handling |
 | `src/index.ts` | CLI export command | ✓ VERIFIED | 156 lines total, export command at lines 102-154 with auth, config check, result display |
 
@@ -73,7 +73,7 @@ All 7 key links verified as properly wired with actual function calls.
 | MESG-03: Include reply_to message ID | ✓ SATISFIED | format.ts:90-107 displays reply ID and quote |
 | MESG-04: Mark attachments with type (no download) | ✓ SATISFIED | format.ts:110-113 shows media type |
 | MESG-05: Preserve text formatting as Markdown | ✓ SATISFIED | format.ts:116 uses md.unparse for entity conversion |
-| OUTP-01: Write to archive/YYYY-MM/chat-name.md | ✓ SATISFIED | writer.ts:107 creates proper directory structure |
+| OUTP-01: Write to data/archive/YYYY-MM/chat-name.md | ✓ SATISFIED | writer.ts:107 creates proper directory structure |
 | OUTP-02: YAML frontmatter with metadata | ✓ SATISFIED | writer.ts:51-70 includes all required fields |
 | OUTP-03: Sanitize filenames with fallback | ✓ SATISFIED | filename.ts:34-57 comprehensive sanitization |
 | SAFE-02: Rate limit with 1.5s + jitter | ✓ SATISFIED | fetch.ts:42 implements exact delay pattern |
@@ -114,7 +114,7 @@ Export chats from tracked folders  ← WORKING
 
 Phase 3 goal **ACHIEVED**. All success criteria verified:
 
-1. ✓ Messages are written to monthly files at `archive/YYYY-MM/chat-name.md`
+1. ✓ Messages are written to monthly files at `data/archive/YYYY-MM/chat-name.md`
 2. ✓ Each file has YAML frontmatter with chat metadata (name, ID, message IDs, export timestamp)
 3. ✓ Messages include sender info, timestamps, reply references, and attachment markers
 4. ✓ Text formatting (bold, italic, links, code) is preserved as Markdown

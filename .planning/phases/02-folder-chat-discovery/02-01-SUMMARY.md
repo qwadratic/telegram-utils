@@ -84,7 +84,7 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 - Folder and config modules ready for CLI integration in Plan 02
-- Plan 02 will add `folders` command using these modules with @clack/prompts multiselect
+- Plan 02 will add `setup` command using these modules with @clack/prompts multiselect
 
 ---
 *Phase: 02-folder-chat-discovery*

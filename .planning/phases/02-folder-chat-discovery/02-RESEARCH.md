@@ -246,17 +246,14 @@ for (const filter of result.filters) {
 ```typescript
 // Per user decision: data/config.json
 interface Config {
-  trackedFolders: {
-    [folderId: number]: number[]  // folder_id -> [chat_ids]
-  }
+  trackedFolderIds: number[]
+  trackedChatIds: number[]
 }
 
 // Example:
 {
-  "trackedFolders": {
-    "2": [123456789, -987654321, -1001234567890],
-    "5": [-1001111111111]
-  }
+  "trackedFolderIds": [2, 5],
+  "trackedChatIds": [123456789, -987654321, -1001234567890, -1001111111111]
 }
 ```
 
@@ -269,7 +266,7 @@ const CONFIG_PATH = 'data/config.json'
 
 function loadConfig(): Config {
   if (!existsSync(CONFIG_PATH)) {
-    return { trackedFolders: {} }
+    return { trackedFolderIds: [], trackedChatIds: [] }
   }
   return JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'))
 }

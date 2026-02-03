@@ -18,13 +18,19 @@ export function createClient(sessionPassword: string): TelegramClient {
     apiId: parseInt(apiId, 10),
     apiHash,
     storage,
+    disableUpdates: true,
     network: {
       // Use built-in middlewares with flood wait handling up to 60 seconds
-      middlewares: networkMiddlewares.basic({
-        floodWaiter: {
-          maxWait: 60_000,
-        },
-      }),
+      middlewares: [
+        ...networkMiddlewares.basic({
+          floodWaiter: {
+            maxWait: 60_000,
+          },
+        }),
+        networkMiddlewares.onRpcError((ctx, error) => {
+          // console.error(`RPC error in ${ctx.request._}: ${error.error_message}`)
+        }),
+      ],
     },
   })
 }

@@ -13,7 +13,7 @@ updated: 2026-02-03T17:00:00Z
 ## Tests
 
 ### 1. Export Creates Monthly Archive Files
-expected: Running `npm run dev -- export` creates archive/YYYY-MM/chat-name.md file structure with separate directories per month
+expected: Running `npm run dev -- export` creates data/archive/YYYY-MM/chat-name.md file structure with separate directories per month
 result: pass
 
 ### 2. YAML Frontmatter Present

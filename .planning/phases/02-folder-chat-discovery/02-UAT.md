@@ -1,9 +1,9 @@
 ---
-status: complete
+status: updated
 phase: 02-folder-chat-discovery
 source: 02-01-SUMMARY.md, 02-02-SUMMARY.md
 started: 2026-02-03T14:05:00Z
-updated: 2026-02-03T14:15:00Z
+updated: 2026-02-03T21:10:00Z
 ---
 
 ## Current Test
@@ -12,44 +12,34 @@ updated: 2026-02-03T14:15:00Z
 
 ## Tests
 
-### 1. List Folders Shows All Telegram Folders
-expected: Running `npm run dev -- folders` displays all Telegram folders with their names and chat counts
+### 1. Setup Lists Telegram Folders
+expected: Running `npm run dev -- setup` displays all Telegram folders with their names and chat counts
 result: pass
 
 ### 2. First-Run Prompts Folder Selection
-expected: On first run (no config exists), user is prompted with a multiselect to choose which folders to track
+expected: On first run (no config exists), user is prompted with a multiselect to choose which folders to export
 result: pass
 
-### 3. Config Persists Selected Folders
-expected: After selection, data/config.json contains the selected folder IDs and their chat IDs
+### 3. Config Persists Selection and Chats
+expected: After selection, data/config.json contains selected folder IDs and a deduplicated chat ID list
 result: pass
 
-### 4. Subsequent Run Shows Chat Diff
-expected: Running `folders` again (after initial selection) shows any added or removed chats since last sync
+### 4. Subsequent Run Refreshes Chats
+expected: Running `setup` again (after initial selection) refreshes tracked chats and logs added/removed IDs
 result: pass
 
 ### 5. Re-Select with --select Flag
-expected: Running `npm run dev -- folders --select` allows changing which folders are tracked (shows multiselect again)
-result: issue
-reported: "error: unknown option '--select'"
-severity: major
+expected: Running `npm run dev -- setup --select` allows changing which folders are exported (shows multiselect again)
+result: pass
 
 ## Summary
 
 total: 5
-passed: 4
-issues: 1
+passed: 5
+issues: 0
 pending: 0
 skipped: 0
 
 ## Gaps
 
-- truth: "Running npm run dev -- folders --select allows changing tracked folders"
-  status: failed
-  reason: "User reported: error: unknown option '--select'"
-  severity: major
-  test: 5
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+None.

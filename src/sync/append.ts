@@ -81,7 +81,7 @@ export function appendToMonthlyFile(
   const safeFilename = sanitizeFilename(chatName, chatId)
 
   // Build file path
-  const filePath = join('archive', yearMonth, `${safeFilename}.md`)
+  const filePath = join('data', 'archive', yearMonth, `${safeFilename}.md`)
 
   // Skip if file doesn't exist (per CONTEXT.md: don't create historical files)
   if (!existsSync(filePath)) {

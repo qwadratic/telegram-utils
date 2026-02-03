@@ -70,9 +70,27 @@ exported_at: "${now}"
 }
 
 /**
+ * Create YAML frontmatter for an empty chat archive file.
+ */
+function createEmptyFrontmatter(chatName: string, chatId: number): string {
+  const now = new Date().toISOString()
+  const escapedName = chatName.replace(/"/g, '\\"')
+
+  return `---
+chat_name: "${escapedName}"
+chat_id: ${chatId}
+first_message_id: null
+last_message_id: null
+exported_at: "${now}"
+---
+
+`
+}
+
+/**
  * Write messages to monthly archive files.
  *
- * Creates files at: archive/YYYY-MM/{sanitized-chat-name}.md
+ * Creates files at: data/archive/YYYY-MM/{sanitized-chat-name}.md
  *
  * Each file contains:
  * - YAML frontmatter with chat metadata
@@ -88,9 +106,16 @@ export async function writeMonthlyFiles(
   chatId: number,
   messages: Message[]
 ): Promise<{ filesWritten: number; messagesWritten: number }> {
-  // Skip if no messages
+  // Create an empty file if no messages
   if (messages.length === 0) {
-    return { filesWritten: 0, messagesWritten: 0 }
+    const safeFilename = sanitizeFilename(chatName, chatId)
+    const yearMonth = getYearMonth(new Date())
+    const dirPath = join('data', 'archive', yearMonth)
+    mkdirSync(dirPath, { recursive: true })
+    const filePath = join(dirPath, `${safeFilename}.md`)
+    const content = `${createEmptyFrontmatter(chatName, chatId)}No messages.\n`
+    writeFileSync(filePath, content, 'utf-8')
+    return { filesWritten: 1, messagesWritten: 0 }
   }
 
   // Group messages by month
@@ -104,7 +129,7 @@ export async function writeMonthlyFiles(
 
   for (const [yearMonth, monthMessages] of grouped) {
     // Create directory if needed
-    const dirPath = join('archive', yearMonth)
+    const dirPath = join('data', 'archive', yearMonth)
     mkdirSync(dirPath, { recursive: true })
 
     // Build file path

@@ -65,7 +65,7 @@ All phases verified with no critical gaps.
 - [x] MESG-05: Text formatting (bold, italic, links, code) is preserved as Markdown
 
 ### Output Format (3/3)
-- [x] OUTP-01: Messages are written to monthly files: `archive/YYYY-MM/chat-name.md`
+- [x] OUTP-01: Messages are written to monthly files: `data/archive/YYYY-MM/chat-name.md`
 - [x] OUTP-02: Each file has YAML frontmatter with chat_name, chat_id, first_message_id, last_message_id, exported_at
 - [x] OUTP-03: Filenames are sanitized; original chat name preserved in frontmatter; fallback to chat ID if all special chars
 
@@ -92,8 +92,8 @@ All phases verified with no critical gaps.
 | checkSession | 1 | auth.ts |
 | EncryptedSqliteStorage | 1 | client.ts |
 | withFloodWaitHandling | 1 | auth.ts |
-| syncFolderConfig | 2 | CLI (folders command) |
-| listFolders | 2 | sync/index.ts |
+| syncFolderConfig | 2 | CLI (setup command) |
+| listFolders | 2 | folders/index.ts |
 | loadConfig | 2 | CLI, folders |
 | saveConfig | 2 | folders |
 | fetchMessages | 3 | sync/index.ts |
@@ -104,13 +104,14 @@ All phases verified with no critical gaps.
 | syncChats | 4 | CLI (export command) |
 | loadState/saveState | 4 | sync/index.ts |
 | appendToMonthlyFile | 4 | sync/index.ts |
-| detectChanges | 4 | sync/index.ts |
+| detectChanges | 4 | (no longer wired) |
 
-### Orphaned Exports (1)
+### Orphaned Exports (2)
 
 | Export | From Phase | Reason |
 |--------|------------|--------|
 | exportChats | 3 | Superseded by syncChats (intentional evolution) |
+| detectChanges | 4 | Sync no longer prompts on new chats/folders; refresh happens in setup/export |
 
 ### Missing Connections (0)
 
@@ -123,9 +124,9 @@ None — all expected connections present.
 auth command → createClient → EncryptedSqliteStorage → ensureAuthenticated → checkSession/signIn → session persisted
 ```
 
-### Flow 2: Folder Selection ✓
+### Flow 2: Setup Selection ✓
 ```
-folders command → auth → syncFolderConfig → listFolders → selectFolders → getChatIdsFromFolder → saveConfig
+setup command → auth → syncFolderConfig → listFolders → selectFolders → getChatIdsFromFolder → saveConfig
 ```
 
 ### Flow 3: Initial Export ✓
@@ -135,7 +136,7 @@ export command → auth → loadConfig → syncChats (first sync) → fetchMessa
 
 ### Flow 4: Incremental Sync ✓
 ```
-export command → auth → loadConfig → loadState → detectChanges → prompts → fetchMessages(minId) → appendToMonthlyFile → saveState
+export command → auth → loadConfig → refreshTrackedChats → loadState → fetchMessages(minId) → appendToMonthlyFile → saveState
 ```
 
 All 4 flows complete without breaks.

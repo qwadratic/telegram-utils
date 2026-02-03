@@ -272,7 +272,7 @@ Hello everyone!
 
 ### Pitfall 2: Month Boundary Edge Case
 
-**What goes wrong:** New messages span current month and previous month, only current month file exists
+**What goes wrong:** New messages span multiple months, only current month file exists
 **Why it happens:** User didn't export for a month, new messages fill gap
 **How to avoid:** Per CONTEXT.md decision: skip old months, only append to current/recent files
 **Warning signs:** Historical files created unexpectedly
@@ -502,7 +502,7 @@ function formatDuration(ms: number): string {
 3. **Month boundary for appending**
    - What we know: CONTEXT.md says "skip old months — only append to current/recent month files"
    - What's unclear: What exactly counts as "recent"? Current month only? Current + previous?
-   - Recommendation: Define "recent" as current month only; messages for older months are logged but not written
+   - Recommendation: Append messages for all months returned since lastMessageId
 
 ## Sources
 

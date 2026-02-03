@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 Phase: 4 of 4 (Incremental Sync) - COMPLETE
 Plan: 4 of 4 in current phase (including gap closure) - COMPLETE
 Status: All phases complete - MVP ready with gap closure fixes
-Last activity: 2026-02-03 - Completed 04-04-PLAN.md (Folder Selection Pre-selection Fix)
+Last activity: 2026-02-03 - Updated setup/config refresh and middleware behavior
 
 Progress: [██████████] 100%
 
@@ -72,9 +72,14 @@ Recent decisions affecting current work:
 - [04-02]: Skip non-existent files during append - no historical file creation
 - [04-02]: New folders handled as special case - all chats marked new
 - [04-03]: First sync detection based on empty state.chats (not config)
-- [04-03]: Old month messages logged as warnings rather than silently dropped
+- [04-03]: New messages appended across all returned months since lastMessageId
 - [04-03]: Deduplicate chat IDs before sync to avoid processing same chat twice
 - [04-04]: Optional currentSelection parameter to selectFolders for backward compatibility
+- [Update]: Rename folders command to setup for export selection
+- [Update]: Config now stores trackedFolderIds + trackedChatIds (no folder->chat map)
+- [Update]: Export refreshes tracked chats from selected folders before sync
+- [Update]: disableUpdates enabled; RPC errors logged via middleware
+- [Update]: Archives stored under data/archive
 
 ### Pending Todos
 
@@ -94,6 +99,6 @@ None - MVP complete.
 
 ## Session Continuity
 
-Last session: 2026-02-03T20:46:10Z
-Stopped at: Completed 04-04-PLAN.md (Folder Selection Pre-selection Fix)
+Last session: 2026-02-03T21:20:00Z
+Stopped at: Updated planning artifacts for archive path and month-wide appends
 Resume file: None

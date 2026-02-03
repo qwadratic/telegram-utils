@@ -33,7 +33,7 @@ async function getChatName(tg: TelegramClient, chatId: number): Promise<string> 
 }
 
 /**
- * Export all chats from tracked folders.
+ * Export all tracked chats.
  *
  * Orchestrates the complete export flow:
  * - Shows spinner with progress updates
@@ -43,7 +43,7 @@ async function getChatName(tg: TelegramClient, chatId: number): Promise<string> 
  * - Writes messages to monthly Markdown files
  *
  * @param tg - Connected Telegram client
- * @param config - Configuration with tracked folders
+ * @param config - Configuration with tracked chats
  * @returns Export statistics
  */
 export async function exportChats(
@@ -52,15 +52,7 @@ export async function exportChats(
 ): Promise<ExportResult> {
   const startTime = Date.now()
 
-  // Collect all unique chat IDs from tracked folders
-  const allChatIds = new Set<number>()
-  for (const chatIds of Object.values(config.trackedFolders)) {
-    for (const chatId of chatIds) {
-      allChatIds.add(chatId)
-    }
-  }
-
-  const chatIdArray = Array.from(allChatIds)
+  const chatIdArray = [...new Set(config.trackedChatIds)]
   const totalChats = chatIdArray.length
 
   let chatsExported = 0

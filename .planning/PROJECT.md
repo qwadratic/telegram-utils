@@ -19,16 +19,16 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 - [ ] Telegram authentication with code + password
 - [ ] Encrypted session storage (password-protected SQLite)
 - [ ] List user's Telegram folders (DialogFilters)
-- [ ] Select folders to track, store DialogFilter IDs in config
+- [ ] Folder selection persists; store folder IDs and tracked chat IDs in config
 - [ ] Export all chats from tracked folders
-- [ ] Output structure: `archive/YYYY-MM/sanitized-chat-name.md`
+- [ ] Output structure: `data/archive/YYYY-MM/sanitized-chat-name.md`
 - [ ] Frontmatter with chat_name, chat_id, first/last message IDs, exported_at
 - [ ] Messages in chronological order (oldest to newest)
 - [ ] Message format: `[timestamp] [id:X] [reply:Y] [attachment:type] **Name (@username)**: text`
-- [ ] Track last exported message ID per chat in config
+- [ ] Track last exported message ID per chat in sync state
 - [ ] Incremental sync: only fetch messages newer than last exported
 - [ ] Default start date 2025-01-01 if no existing archive
-- [ ] Log new chats/folders detected, auto-add to export
+- [ ] Refresh tracked chats from selected folders before export
 - [ ] Keep archives for removed chats/folders (never delete)
 - [ ] Sanitize chat names for filenames (fallback to chat ID if all special chars)
 - [ ] Preserve original chat name in frontmatter even if filename differs
@@ -54,7 +54,7 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 - messages.getDialogs for fetching chats in folders
 - Rate limiting and safety patterns
 
-**Archive location:** Current working directory where tool is run. Config stored in archive root.
+**Archive location:** `data/archive` under the current working directory. Config stored in `data/config.json`.
 
 ## Constraints
 
@@ -62,7 +62,7 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 - **Library**: mtcute (no alternatives)
 - **Safety**: Read-only operations only, follow Telegram ToS, implement rate limiting
 - **Auth**: Encrypted session storage (password-protected SQLite)
-- **Storage**: Config in archive root, no external databases
+- **Storage**: Config in `data/config.json`, no external databases
 
 ## Key Decisions
 
@@ -74,4 +74,4 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 | Additive-only updates | Prevent accidental data loss, archives are append-only | — Pending |
 
 ---
-*Last updated: 2026-02-03 after requirements definition*
+*Last updated: 2026-02-03 after folder refresh on export update*

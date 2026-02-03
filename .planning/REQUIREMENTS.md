@@ -17,7 +17,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **FOLD-01**: User can list all Telegram folders (DialogFilters) with names and IDs
 - [x] **FOLD-02**: User can select folders to track, tool enumerates all chats within selected folders
 - [x] **FOLD-03**: Selected folder IDs persist in config file between runs
-- [x] **FOLD-04**: On startup, tool detects and logs new folders or new chats in tracked folders
+- [x] **FOLD-04**: On startup, tool refreshes tracked chats from selected folders and updates config when changed
 
 ### Message Export
 
@@ -29,7 +29,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Output Format
 
-- [x] **OUTP-01**: Messages are written to monthly files: `archive/YYYY-MM/chat-name.md`
+- [x] **OUTP-01**: Messages are written to monthly files: `data/archive/YYYY-MM/chat-name.md`
 - [x] **OUTP-02**: Each file has YAML frontmatter with chat_name, chat_id, first_message_id, last_message_id, exported_at
 - [x] **OUTP-03**: Filenames are sanitized; original chat name preserved in frontmatter; fallback to chat ID if all special chars
 
@@ -38,7 +38,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **SYNC-01**: Config tracks last exported message ID per chat
 - [x] **SYNC-02**: Subsequent runs fetch only messages newer than last exported (using minId)
 - [x] **SYNC-03**: New messages are appended to existing monthly files
-- [x] **SYNC-04**: Startup logs any new chats or folders detected in tracked folders
+- [x] **SYNC-04**: Export refreshes tracked chats from selected folders before syncing
 
 ### Safety
 
@@ -113,4 +113,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after initial definition*
+*Last updated: 2026-02-03 after setup/config refresh update*

@@ -23,7 +23,7 @@ export async function ensureAuthenticated(tg: TelegramClient): Promise<User> {
 
   const existingUser = await checkSession(tg)
   if (existingUser) {
-    s.stop(chalk.green(`Already authenticated as ${existingUser.firstName}`))
+    s.stop(chalk.green(`Logged in as ${existingUser.firstName} using session`))
     outro('Session valid!')
     return existingUser
   }

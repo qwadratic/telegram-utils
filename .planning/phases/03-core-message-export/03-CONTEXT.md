@@ -39,7 +39,7 @@ Export complete message history from tracked folders to structured Markdown file
 No specific requirements — open to standard approaches for Markdown formatting.
 
 The success criteria from ROADMAP.md are quite specific:
-- Monthly files at `archive/YYYY-MM/chat-name.md`
+- Monthly files at `data/archive/YYYY-MM/chat-name.md`
 - YAML frontmatter with chat metadata
 - Sender info, timestamps, reply references, attachment markers
 - Text formatting preserved as Markdown

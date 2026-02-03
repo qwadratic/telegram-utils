@@ -35,11 +35,11 @@ metrics:
 
 # Phase 04 Plan 04: Folder Selection Pre-selection Fix Summary
 
-**One-liner:** selectFolders() now accepts initialValues for pre-selecting already-tracked folders in multiselect prompt.
+**One-liner:** selectFolders() now accepts initialValues for pre-selecting already-selected folders in the multiselect prompt.
 
 ## What Was Done
 
-Gap closure plan to fix UX issue where `folders --select` showed all folders unchecked even when some were already tracked.
+Gap closure plan to fix UX issue where `setup --select` showed all folders unchecked even when some were already selected.
 
 ### Task 1: Add initialValues support to selectFolders
 
@@ -62,7 +62,7 @@ export async function selectFolders(folders: FolderInfo[], currentSelection?: nu
 ```typescript
 // multiselect now receives initialValues
 const selected = await multiselect({
-  message: 'Select folders to track:',
+  message: 'Select folders to export:',
   options: folders.map(f => ({
     value: f.id,
     label: `${f.title} (${f.chatCount} chats)`
@@ -74,7 +74,7 @@ const selected = await multiselect({
 
 ```typescript
 // syncFolderConfig passes existing tracked folders
-trackedFolderIds = await selectFolders(folders, Object.keys(config.trackedFolders).map(Number))
+trackedFolderIds = await selectFolders(folders, config.trackedFolderIds)
 ```
 
 ## Commits
@@ -110,6 +110,6 @@ None - plan executed exactly as written.
 **Gap addressed:** Folder selection now pre-selects already-tracked folders when using --select flag.
 
 **Behavior:**
-- First run: All folders unchecked (config.trackedFolders is empty)
-- `--select` flag: Previously tracked folders appear checked
+- First run: All folders unchecked (config.trackedFolderIds is empty)
+- `--select` flag: Previously selected folders appear checked
 - User can toggle selection and save new configuration

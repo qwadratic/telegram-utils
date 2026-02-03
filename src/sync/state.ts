@@ -21,7 +21,7 @@ export interface SyncState {
 /**
  * Path to the sync state file
  */
-export const STATE_PATH = 'data/sync-state.json'
+export const STATE_PATH = 'data/archive/sync-state.json'
 
 /**
  * Load sync state from disk. Returns empty state if file doesn't exist.

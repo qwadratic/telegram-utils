@@ -6,9 +6,8 @@ import { dirname } from 'node:path'
  * Stored at data/config.json for persistence across runs.
  */
 export interface Config {
-  trackedFolders: {
-    [folderId: number]: number[] // folder_id -> [chat_ids]
-  }
+  trackedFolderIds: number[]
+  trackedChatIds: number[]
 }
 
 /**
@@ -22,11 +21,31 @@ export const CONFIG_PATH = 'data/config.json'
  */
 export function loadConfig(): Config {
   if (!existsSync(CONFIG_PATH)) {
-    return { trackedFolders: {} }
+    return { trackedFolderIds: [], trackedChatIds: [] }
   }
 
   const content = readFileSync(CONFIG_PATH, 'utf-8')
-  return JSON.parse(content) as Config
+  const parsed = JSON.parse(content) as Partial<Config> & {
+    trackedFolders?: Record<number, number[]>
+  }
+
+  if (parsed.trackedFolderIds && parsed.trackedChatIds) {
+    return {
+      trackedFolderIds: parsed.trackedFolderIds,
+      trackedChatIds: parsed.trackedChatIds
+    }
+  }
+
+  if (parsed.trackedFolders) {
+    const folderIds = Object.keys(parsed.trackedFolders).map(Number)
+    const chatIds = Object.values(parsed.trackedFolders).flat()
+    return {
+      trackedFolderIds: folderIds,
+      trackedChatIds: chatIds
+    }
+  }
+
+  return { trackedFolderIds: [], trackedChatIds: [] }
 }
 
 /**

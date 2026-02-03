@@ -34,7 +34,7 @@ key-files:
 key-decisions:
   - "syncChats determines first sync by empty state.chats, not config presence"
   - "New folders detected via state comparison, chats fetched from Telegram on demand"
-  - "First sync writes all files, subsequent syncs append to current month only"
+  - "First sync writes all files, subsequent syncs append to all months returned since lastMessageId"
   - "Old month messages during incremental sync are logged as warnings, not written"
 
 patterns-established:

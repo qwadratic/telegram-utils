@@ -35,7 +35,7 @@ key-decisions:
 
 patterns-established:
   - "formatSender handles all PeerSender variants with consistent output"
-  - "Monthly file structure: archive/YYYY-MM/{sanitized-name}.md"
+  - "Monthly file structure: data/archive/YYYY-MM/{sanitized-name}.md"
   - "Frontmatter includes first/last message IDs for incremental sync support"
 
 # Metrics
@@ -45,7 +45,7 @@ completed: 2026-02-03
 
 # Phase 3 Plan 2: Message Formatting & Writing Summary
 
-**Message-to-Markdown conversion using md.unparse with monthly file output structure (archive/YYYY-MM/chat-name.md) and YAML frontmatter**
+**Message-to-Markdown conversion using md.unparse with monthly file output structure (data/archive/YYYY-MM/chat-name.md) and YAML frontmatter**
 
 ## Performance
 
@@ -58,7 +58,7 @@ completed: 2026-02-03
 ## Accomplishments
 - formatMessage converts Telegram messages to readable Markdown with timestamp, sender, ID, and preserved text formatting
 - Forward attribution, reply quotes (truncated to 100 chars), and attachment type markers included
-- Monthly file writer creates archive/YYYY-MM/chat-name.md with YAML frontmatter and chronological messages
+- Monthly file writer creates data/archive/YYYY-MM/chat-name.md with YAML frontmatter and chronological messages
 
 ## Task Commits
 
@@ -90,7 +90,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 - Format and writer modules ready for integration
 - Plan 03 (Export CLI command) can now combine fetch.ts, format.ts, and writer.ts
-- Archive directory structure (archive/YYYY-MM/) will be created on first export
+- Archive directory structure (data/archive/YYYY-MM/) will be created on first export
 
 ---
 *Phase: 03-core-message-export*

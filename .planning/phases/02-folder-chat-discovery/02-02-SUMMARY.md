@@ -2,7 +2,7 @@
 phase: 02-folder-chat-discovery
 plan: 02
 subsystem: cli
-tags: [clack/prompts, multiselect, folders, diff, telegram]
+tags: [clack/prompts, multiselect, setup, diff, telegram]
 
 # Dependency graph
 requires:
@@ -12,14 +12,14 @@ requires:
 provides:
   - Interactive folder selection via multiselect prompt
   - Chat diff detection between runs
-  - CLI folders command for folder management
+  - CLI setup command for folder selection
 affects: [03-message-export]
 
 # Tech tracking
 tech-stack:
   added: []
   patterns:
-    - First-run selection with subsequent diff tracking
+    - First-run selection with subsequent refresh + diff logging
     - Set comparison for detecting chat changes
 
 key-files:
@@ -43,7 +43,7 @@ completed: 2026-02-03
 
 # Phase 2 Plan 02: Folder Selection & CLI Command Summary
 
-**Interactive folder multiselect with @clack/prompts, diff tracking for chat changes, and CLI folders command wired up**
+**Interactive folder multiselect with @clack/prompts, diff tracking for chat changes, and CLI setup command wired up**
 
 ## Performance
 
@@ -56,7 +56,7 @@ completed: 2026-02-03
 ## Accomplishments
 - Interactive folder selection using @clack/prompts multiselect
 - Chat diff detection that logs added/removed chats between runs
-- CLI `folders` command that handles first-run selection and subsequent diff syncs
+- CLI `setup` command that handles first-run selection and subsequent refresh
 - Full integration with auth flow (ensures authenticated before folder access)
 
 ## Task Commits
@@ -64,11 +64,11 @@ completed: 2026-02-03
 Each task was committed atomically:
 
 1. **Task 1: Add folder selection and diff tracking to folders module** - `125665e` (feat)
-2. **Task 2: Wire folders command in CLI** - `c89e1d8` (feat)
+2. **Task 2: Wire setup command in CLI** - `c89e1d8` (feat)
 
 ## Files Created/Modified
 - `src/folders/index.ts` - Added selectFolders (multiselect), diffChatLists (set comparison), syncFolderConfig (orchestration)
-- `src/index.ts` - Added folders command with password prompt, auth check, and syncFolderConfig call
+- `src/index.ts` - Added setup command with password prompt, auth check, and syncFolderConfig call
 
 ## Decisions Made
 - Log only chat IDs for now (not chat names) - getting names requires additional API calls per chat, deferred to future phases
@@ -79,7 +79,7 @@ Each task was committed atomically:
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Fixed tg.close() to tg.destroy()**
-- **Found during:** Task 2 (Wire folders command)
+- **Found during:** Task 2 (Wire setup command)
 - **Issue:** Plan specified `tg.close()` but mtcute's TelegramClient uses `tg.destroy()` method
 - **Fix:** Changed to `tg.destroy()` matching the existing auth command pattern
 - **Files modified:** src/index.ts
@@ -100,7 +100,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 - Phase 2 complete - folder discovery and tracking fully operational
 - Ready for Phase 3: Message Export Engine
-- Config file `data/config.json` will contain tracked folder IDs and chat IDs for export
+- Config file `data/config.json` will contain tracked folder IDs and tracked chat IDs for export
 
 ---
 *Phase: 02-folder-chat-discovery*

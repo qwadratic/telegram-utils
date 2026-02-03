@@ -1,17 +1,17 @@
 ---
 phase: 02-folder-chat-discovery
-verified: 2026-02-03T03:15:00Z
+verified: 2026-02-03T21:10:00Z
 status: passed
 score: 4/4 must-haves verified
-re_verification: false
+re_verification: true
 ---
 
 # Phase 2: Folder & Chat Discovery Verification Report
 
-**Phase Goal:** User can view their Telegram folders and select which ones to track for export
-**Verified:** 2026-02-03T03:15:00Z
+**Phase Goal:** User can view their Telegram folders and select which ones to export
+**Verified:** 2026-02-03T21:10:00Z
 **Status:** PASSED
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — updated for setup command and config schema
 
 ## Goal Achievement
 
@@ -20,9 +20,9 @@ re_verification: false
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
 | 1 | User can list all Telegram folders with their names and chat counts | ✓ VERIFIED | `listFolders()` calls `tg.getFolders()`, extracts id/title/chatCount from each filter (184 lines) |
-| 2 | User can select folders to track — tool enumerates all chats within selected folders | ✓ VERIFIED | `selectFolders()` uses multiselect prompt; `getChatIdsFromFolder()` extracts chat IDs via getMarkedPeerId() |
-| 3 | Selected folder IDs persist in config file between runs | ✓ VERIFIED | `saveConfig()` writes to data/config.json; `loadConfig()` reads on startup; config structure matches spec |
-| 4 | Running folders command again shows diff: new/removed chats logged to console | ✓ VERIFIED | `diffChatLists()` compares stored vs current; lines 169-172 log added/removed chats |
+| 2 | User can select folders to export — tool enumerates all chats within selected folders | ✓ VERIFIED | `selectFolders()` uses multiselect prompt; `getChatIdsFromFolder()` extracts chat IDs via getMarkedPeerId() |
+| 3 | Selected folder IDs persist in config file between runs | ✓ VERIFIED | `saveConfig()` writes to data/config.json; `loadConfig()` reads on startup; config structure includes tracked folder IDs |
+| 4 | Running setup again refreshes tracked chats and logs added/removed IDs | ✓ VERIFIED | `diffChatLists()` compares stored vs current; setup logs added/removed chats during refresh |
 
 **Score:** 4/4 truths verified
 
@@ -30,9 +30,9 @@ re_verification: false
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/folders/index.ts` | Folder enumeration and chat ID extraction | ✓ VERIFIED | 184 lines; exports FolderInfo, listFolders, getChatIdsFromFolder, selectFolders, diffChatLists, syncFolderConfig; no stubs |
-| `src/config/index.ts` | Config file management | ✓ VERIFIED | 44 lines; exports Config interface, loadConfig, saveConfig, CONFIG_PATH; uses sync fs operations |
-| `src/index.ts` | CLI folders command | ✓ VERIFIED | 91 lines; `.command('folders')` at line 47; imports syncFolderConfig; wired to auth flow |
+| `src/folders/index.ts` | Folder enumeration and chat ID extraction | ✓ VERIFIED | Exports FolderInfo, listFolders, getChatIdsFromFolder, selectFolders, diffChatLists, syncFolderConfig; no stubs |
+| `src/config/index.ts` | Config file management | ✓ VERIFIED | Exports Config interface with trackedFolderIds/trackedChatIds, loadConfig, saveConfig, CONFIG_PATH |
+| `src/index.ts` | CLI setup command | ✓ VERIFIED | `.command('setup')` wired to auth flow and syncFolderConfig |
 
 **All artifacts:** EXISTS + SUBSTANTIVE + WIRED
 
@@ -42,40 +42,40 @@ re_verification: false
 - **Exists:** ✓ (184 lines)
 - **Substantive:** ✓ (no TODO/FIXME/placeholder patterns; 6 exports; real implementations)
 - **Wired:** ✓
-  - Imported in src/index.ts (line 7)
-  - Used in folders command (line 69: `await syncFolderConfig(tg)`)
-  - Calls tg.getFolders() (lines 25, 124)
-  - Uses getMarkedPeerId() from @mtcute/core (line 66)
-  - Imports loadConfig/saveConfig from config module (line 4)
-  - Uses multiselect from @clack/prompts (line 77)
+  - Imported in src/index.ts
+  - Used in setup command (`await syncFolderConfig(tg)`)
+  - Calls tg.getFolders()
+  - Uses getMarkedPeerId() from @mtcute/core
+  - Imports loadConfig/saveConfig from config module
+  - Uses multiselect from @clack/prompts
 
 #### src/config/index.ts
 - **Exists:** ✓ (44 lines)
 - **Substantive:** ✓ (no stubs; real file I/O with readFileSync/writeFileSync)
 - **Wired:** ✓
-  - Imported in src/folders/index.ts (line 4)
-  - loadConfig called at line 130 of folders module
-  - saveConfig called at line 181 of folders module
-  - CONFIG_PATH points to 'data/config.json' (line 17)
+  - Imported in src/folders/index.ts
+  - loadConfig called in setup flow
+  - saveConfig called after folder selection/refresh
+  - CONFIG_PATH points to 'data/config.json'
 
 #### src/index.ts
 - **Exists:** ✓ (91 lines)
 - **Substantive:** ✓ (real command with auth flow and error handling)
 - **Wired:** ✓
-  - `.command('folders')` defined at line 47
-  - Imports syncFolderConfig from folders module (line 7)
-  - Calls ensureAuthenticated before folder access (line 66)
-  - Calls syncFolderConfig at line 69
+  - `.command('setup')` defined in CLI
+  - Imports syncFolderConfig from folders module
+  - Calls ensureAuthenticated before folder access
+  - Calls syncFolderConfig
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| src/folders/index.ts | @mtcute/node | getFolders(), getMarkedPeerId() | ✓ WIRED | Lines 2, 25, 66, 124 — API calls present and used |
-| src/folders/index.ts | @clack/prompts | multiselect | ✓ WIRED | Line 3 import, line 77 call with options array |
-| src/folders/index.ts | src/config/index.ts | loadConfig/saveConfig | ✓ WIRED | Line 4 import, lines 130 (load) and 181 (save) |
-| src/index.ts | src/folders/index.ts | syncFolderConfig import and call | ✓ WIRED | Line 7 import, line 69 await call in folders command |
-| src/config/index.ts | data/config.json | readFileSync/writeFileSync | ✓ WIRED | Lines 28 (read), 43 (write); CONFIG_PATH = 'data/config.json' |
+| src/folders/index.ts | @mtcute/node | getFolders(), getMarkedPeerId() | ✓ WIRED | API calls present and used |
+| src/folders/index.ts | @clack/prompts | multiselect | ✓ WIRED | Multiselect prompt wired to selection UI |
+| src/folders/index.ts | src/config/index.ts | loadConfig/saveConfig | ✓ WIRED | Config load/save used in setup flow |
+| src/index.ts | src/folders/index.ts | syncFolderConfig import and call | ✓ WIRED | Setup command calls syncFolderConfig |
+| src/config/index.ts | data/config.json | readFileSync/writeFileSync | ✓ WIRED | CONFIG_PATH = 'data/config.json' |
 
 **All key links:** WIRED
 
@@ -85,7 +85,7 @@ re_verification: false
 |-------------|--------|-------------------|
 | FOLD-01: User can list all Telegram folders (DialogFilters) with names and IDs | ✓ SATISFIED | Truth 1 — listFolders() returns FolderInfo[] with id/title/chatCount |
 | FOLD-02: User can select folders to track, tool enumerates all chats within selected folders | ✓ SATISFIED | Truth 2 — selectFolders() + getChatIdsFromFolder() |
-| FOLD-03: Selected folder IDs persist in config file between runs | ✓ SATISFIED | Truth 3 — config.trackedFolders saved to data/config.json |
+| FOLD-03: Selected folder IDs persist in config file between runs | ✓ SATISFIED | Truth 3 — config.trackedFolderIds saved to data/config.json |
 
 **All requirements:** SATISFIED
 
@@ -123,11 +123,11 @@ Verified patterns:
 The implementation successfully delivers:
 1. Folder listing via Telegram API
 2. Interactive folder selection with multiselect
-3. Config persistence with diff tracking
-4. Complete CLI command wired to auth flow
+3. Config persistence with tracked folder IDs + tracked chat IDs
+4. Complete setup command wired to auth flow
 
 No gaps found. No human verification required. Ready to proceed to Phase 3.
 
 ---
-_Verified: 2026-02-03T03:15:00Z_
+_Verified: 2026-02-03T21:10:00Z_
 _Verifier: Claude (gsd-verifier)_

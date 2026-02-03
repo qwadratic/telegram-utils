@@ -40,8 +40,7 @@ export async function listFolders(tg: TelegramClient): Promise<FolderInfo[]> {
     })
   }
 
-  // Sort by folder ID for consistent ordering
-  return folders.sort((a, b) => a.id - b.id)
+  return folders
 }
 
 /**
@@ -76,12 +75,12 @@ export function getChatIdsFromFolder(folder: EnumerableFolder): number[] {
  */
 export async function selectFolders(folders: FolderInfo[], currentSelection?: number[]): Promise<number[]> {
   const selected = await multiselect({
-    message: 'Select folders to track:',
+    message: 'Select folders to export:',
     options: folders.map(f => ({
       value: f.id,
       label: `${f.title} (${f.chatCount} chats)`
     })),
-    required: true,
+    required: false,
     initialValues: currentSelection
   })
 
@@ -109,9 +108,107 @@ export function diffChatLists(
   return { added, removed }
 }
 
+async function getChatDisplayName(tg: TelegramClient, chatId: number): Promise<string> {
+  try {
+    const peer = await tg.getPeer(chatId)
+    return peer.displayName || String(chatId)
+  } catch {
+    return String(chatId)
+  }
+}
+
+function haveSameChatIds(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false
+  const setA = new Set(a)
+  for (const id of b) {
+    if (!setA.has(id)) return false
+  }
+  return true
+}
+
 /**
- * Main orchestration function for the folders command.
- * Handles first-run selection and subsequent diff tracking.
+ * Build a deduplicated list of chat IDs from tracked folders.
+ * Removes any folder IDs that no longer exist.
+ *
+ * @param tg - Connected Telegram client
+ * @param trackedFolderIds - Selected folder IDs
+ */
+export async function buildTrackedChatIds(
+  tg: TelegramClient,
+  trackedFolderIds: number[]
+): Promise<{ folderIds: number[]; chatIds: number[] }> {
+  const rawResult = await tg.getFolders()
+  const rawFilters = rawResult.filters.filter(
+    (f): f is EnumerableFolder => f._ !== 'dialogFilterDefault'
+  )
+
+  const validFolderIds: number[] = []
+  const chatIdSet = new Set<number>()
+
+  for (const folderId of trackedFolderIds) {
+    const rawFilter = rawFilters.find(f => f.id === folderId)
+
+    if (!rawFilter) {
+      console.log(`Folder ${folderId} no longer exists, removing from config`)
+      continue
+    }
+
+    validFolderIds.push(folderId)
+    const currentChatIds = getChatIdsFromFolder(rawFilter)
+    for (const id of currentChatIds) {
+      chatIdSet.add(id)
+    }
+  }
+
+  return { folderIds: validFolderIds, chatIds: [...chatIdSet] }
+}
+
+/**
+ * Refresh tracked chats from selected folders and persist if changed.
+ */
+export async function refreshTrackedChats(
+  tg: TelegramClient,
+  config: Config
+): Promise<{ updated: boolean; config: Config }> {
+  const { folderIds, chatIds } = await buildTrackedChatIds(tg, config.trackedFolderIds)
+  const { added, removed } = diffChatLists(config.trackedChatIds, chatIds)
+  const chatsChanged = !haveSameChatIds(config.trackedChatIds, chatIds)
+
+  if (added.length > 0) {
+    const addedWithNames = await Promise.all(
+      added.map(async id => ({
+        id,
+        name: await getChatDisplayName(tg, id)
+      }))
+    )
+    for (const chat of addedWithNames) {
+      console.log(`New chat: ${chat.name} (${chat.id})`)
+    }
+  }
+
+  if (removed.length > 0) {
+    const removedWithNames = await Promise.all(
+      removed.map(async id => ({
+        id,
+        name: await getChatDisplayName(tg, id)
+      }))
+    )
+    for (const chat of removedWithNames) {
+      console.log(`Removed chat: ${chat.name} (${chat.id})`)
+    }
+  }
+
+  if (chatsChanged || folderIds.length !== config.trackedFolderIds.length) {
+    config.trackedChatIds = chatIds
+    saveConfig(config)
+  }
+
+  return { updated: chatsChanged, config }
+}
+
+/**
+ * Main orchestration function for the setup command.
+ * Handles first-run selection and subsequent refresh.
  * @param forceSelect - If true, show folder selection even if already configured
  */
 export async function syncFolderConfig(tg: TelegramClient, forceSelect = false): Promise<void> {
@@ -123,15 +220,9 @@ export async function syncFolderConfig(tg: TelegramClient, forceSelect = false):
     return
   }
 
-  // Get raw filters for chat ID extraction
-  const rawResult = await tg.getFolders()
-  const rawFilters = rawResult.filters.filter(
-    (f): f is EnumerableFolder => f._ !== 'dialogFilterDefault'
-  )
-
   // Load existing config
   const config = loadConfig()
-  const isFirstRun = Object.keys(config.trackedFolders).length === 0
+  const isFirstRun = config.trackedFolderIds.length === 0
 
   // Determine which folders to track
   let trackedFolderIds: number[]
@@ -139,49 +230,23 @@ export async function syncFolderConfig(tg: TelegramClient, forceSelect = false):
   if (isFirstRun || forceSelect) {
     // First run or forced re-selection: show selection prompt
     console.log(`Found ${folders.length} folder(s):`)
-    trackedFolderIds = await selectFolders(folders, Object.keys(config.trackedFolders).map(Number))
+    trackedFolderIds = await selectFolders(folders, config.trackedFolderIds)
   } else {
     // Subsequent run: use existing tracked folders
-    trackedFolderIds = Object.keys(config.trackedFolders).map(Number)
-    console.log(`Syncing ${trackedFolderIds.length} tracked folder(s)...`)
+    trackedFolderIds = config.trackedFolderIds
+    console.log(`Refreshing chat list from ${trackedFolderIds.length} selected folder(s)...`)
   }
 
-  // Process each tracked folder
-  let totalChats = 0
+  const { folderIds, chatIds } = await buildTrackedChatIds(tg, trackedFolderIds)
+  const { added, removed } = diffChatLists(config.trackedChatIds, chatIds)
 
-  for (const folderId of trackedFolderIds) {
-    const rawFilter = rawFilters.find(f => f.id === folderId)
 
-    if (!rawFilter) {
-      console.log(`Folder ${folderId} no longer exists, removing from config`)
-      delete config.trackedFolders[folderId]
-      continue
-    }
 
-    const currentChatIds = getChatIdsFromFolder(rawFilter)
-    totalChats += currentChatIds.length
-
-    // Check for changes if folder existed in config
-    if (config.trackedFolders[folderId]) {
-      const { added, removed } = diffChatLists(
-        config.trackedFolders[folderId],
-        currentChatIds
-      )
-
-      for (const id of added) {
-        console.log(`New chat: ${id}`)
-      }
-      for (const id of removed) {
-        console.log(`Removed chat: ${id}`)
-      }
-    }
-
-    // Update config with current chat IDs
-    config.trackedFolders[folderId] = currentChatIds
-  }
+  config.trackedFolderIds = folderIds
+  config.trackedChatIds = chatIds
 
   // Save updated config
   saveConfig(config)
 
-  console.log(`Tracking ${trackedFolderIds.length} folders with ${totalChats} total chats`)
+  console.log(`Tracking ${folderIds.length} folders with ${chatIds.length} total chats`)
 }
