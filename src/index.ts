@@ -4,6 +4,7 @@ import { password, isCancel, intro } from '@clack/prompts'
 import chalk from 'chalk'
 import { createClient } from './client.js'
 import { ensureAuthenticated } from './auth.js'
+import { syncFolderConfig } from './folders/index.js'
 
 const program = new Command()
   .name('symbiotic-chats')
@@ -32,6 +33,44 @@ program
       console.log(chalk.green(`\nLogged in as: ${user.firstName} ${user.lastName || ''} (@${user.username || 'no username'})`))
 
       await tg.destroy()
+    } catch (e) {
+      if (e instanceof Error) {
+        console.error(chalk.red(`Error: ${e.message}`))
+      } else {
+        console.error(chalk.red('An unexpected error occurred'))
+      }
+      process.exit(1)
+    }
+  })
+
+program
+  .command('folders')
+  .description('List and select Telegram folders to track')
+  .action(async () => {
+    try {
+      intro(chalk.cyan('Folder Configuration'))
+      const sessionPass = await password({
+        message: 'Enter session password:'
+      })
+      if (isCancel(sessionPass)) {
+        console.log(chalk.yellow('Cancelled'))
+        process.exit(0)
+      }
+
+      const tg = createClient(sessionPass as string)
+
+      try {
+        await tg.connect()
+
+        // Ensure user is authenticated before accessing folders
+        await ensureAuthenticated(tg)
+
+        // Sync folder config (first run: select, subsequent: diff)
+        await syncFolderConfig(tg)
+
+      } finally {
+        await tg.destroy()
+      }
     } catch (e) {
       if (e instanceof Error) {
         console.error(chalk.red(`Error: ${e.message}`))
