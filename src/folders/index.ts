@@ -110,8 +110,9 @@ export function diffChatLists(
 /**
  * Main orchestration function for the folders command.
  * Handles first-run selection and subsequent diff tracking.
+ * @param forceSelect - If true, show folder selection even if already configured
  */
-export async function syncFolderConfig(tg: TelegramClient): Promise<void> {
+export async function syncFolderConfig(tg: TelegramClient, forceSelect = false): Promise<void> {
   // Get folder info for display
   const folders = await listFolders(tg)
 
@@ -133,8 +134,8 @@ export async function syncFolderConfig(tg: TelegramClient): Promise<void> {
   // Determine which folders to track
   let trackedFolderIds: number[]
 
-  if (isFirstRun) {
-    // First run: show selection prompt
+  if (isFirstRun || forceSelect) {
+    // First run or forced re-selection: show selection prompt
     console.log(`Found ${folders.length} folder(s):`)
     trackedFolderIds = await selectFolders(folders)
   } else {

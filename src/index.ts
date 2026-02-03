@@ -63,7 +63,8 @@ program
 program
   .command('folders')
   .description('List and select Telegram folders to track')
-  .action(async () => {
+  .option('--select', 'Force folder re-selection')
+  .action(async (options) => {
     try {
       intro(chalk.cyan('Folder Configuration'))
       const sessionPass = await password({
@@ -83,7 +84,7 @@ program
         await ensureAuthenticated(tg)
 
         // Sync folder config (first run: select, subsequent: diff)
-        await syncFolderConfig(tg)
+        await syncFolderConfig(tg, options.select)
 
       } finally {
         await tg.destroy()
