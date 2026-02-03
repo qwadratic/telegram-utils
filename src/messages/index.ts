@@ -83,10 +83,12 @@ export async function exportChats(
     const messages: Message[] = []
     let lastProgressCount = 0
 
-    for await (const msg of fetchMessages(tg, chatId, (count) => {
-      // Progress callback - called after each chunk
-      lastProgressCount = count
-      s.message(`Chat ${chatIndex}: fetched ${count} messages...`)
+    for await (const msg of fetchMessages(tg, chatId, {
+      onProgress: (count) => {
+        // Progress callback - called after each chunk
+        lastProgressCount = count
+        s.message(`Chat ${chatIndex}: fetched ${count} messages...`)
+      }
     })) {
       messages.push(msg)
 
