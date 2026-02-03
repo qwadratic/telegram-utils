@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Reliably export and incrementally sync Telegram chats to searchable Markdown without risking account bans or data loss.
-**Current focus:** Phase 2 - Folder & Chat Discovery
+**Current focus:** Phase 3 - Message Export Engine (ready to start)
 
 ## Current Position
 
-Phase: 2 of 4 (Folder & Chat Discovery)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-03 - Completed 02-01-PLAN.md (Folder & Config Modules)
+Phase: 2 of 4 (Folder & Chat Discovery) - COMPLETE
+Plan: 2 of 2 in current phase - COMPLETE
+Status: Phase 2 complete, ready for Phase 3
+Last activity: 2026-02-03 - Completed 02-02-PLAN.md (Folder Selection & CLI)
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 7min
-- Total execution time: 20min
+- Total plans completed: 4
+- Average duration: 6min
+- Total execution time: 24min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation-authentication | 2 | 18min | 9min |
-| 02-folder-chat-discovery | 1 | 2min | 2min |
+| 02-folder-chat-discovery | 2 | 6min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (3min), 01-02 (15min), 02-01 (2min)
-- Trend: Fast (02-01 was simple module creation)
+- Last 5 plans: 01-01 (3min), 01-02 (15min), 02-01 (2min), 02-02 (4min)
+- Trend: Fast execution across Phase 2
 
 *Updated after each plan completion*
 
@@ -53,6 +53,8 @@ Recent decisions affecting current work:
 - [01-02]: checkSession uses getMe() to validate existing session
 - [02-01]: Use getMarkedPeerId() for peer ID conversion - handles all InputPeer variants
 - [02-01]: Sync file operations for config - avoids race conditions in CLI context
+- [02-02]: Log chat IDs only (not names) - name lookup deferred to future phases
+- [02-02]: Use tg.destroy() for client cleanup (mtcute pattern)
 
 ### Pending Todos
 
@@ -64,6 +66,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-03T02:04:28Z
-Stopped at: Completed 02-01-PLAN.md (Folder & Config Modules)
+Last session: 2026-02-03T02:09:00Z
+Stopped at: Completed 02-02-PLAN.md (Folder Selection & CLI)
 Resume file: None
