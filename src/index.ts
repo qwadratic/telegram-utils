@@ -1,4 +1,6 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+dotenv.config({ override: true })
+
 import { Command } from 'commander'
 import { confirm, password, isCancel, intro, spinner } from '@clack/prompts'
 import chalk from 'chalk'
@@ -43,6 +45,15 @@ function parseCutoffDate(value: string): Date | null {
     return null
   }
   return date
+}
+
+function normalizePhoneInput(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  const hasPlus = trimmed.startsWith('+')
+  const digitsOnly = trimmed.replace(/\D/g, '')
+  if (!digitsOnly) return ''
+  return hasPlus ? `+${digitsOnly}` : digitsOnly
 }
 
 async function resolveExportConfig(tg: TelegramClient) {
@@ -310,7 +321,7 @@ program
     try {
       // Parse comma-separated phones
       const rawParts = phonesArg.split(',')
-      const phones = rawParts.map(p => p.trim()).filter(Boolean)
+      const phones = rawParts.map(normalizePhoneInput).filter(Boolean)
       const skippedCount = rawParts.length - phones.length
 
       if (phones.length === 0) {
@@ -355,9 +366,11 @@ program
         const validResults = results.filter(r => r.userId != null)
 
         // Output CSV to stdout (header + data)
-        console.log('user_id,phone_number,username')
-        for (const r of validResults) {
-          console.log(`${r.userId},${r.phone},${r.username ?? ''}`)
+        if (validResults.length > 0) {
+          console.log('user_id,phone_number,username')
+          for (const r of validResults) {
+            console.log(`${r.userId},${r.phone},${r.username ?? ''}`)
+          }
         }
         console.error(`checked=${results.length}, valid=${validResults.length}`)
 
