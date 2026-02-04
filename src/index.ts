@@ -1,8 +1,9 @@
 import 'dotenv/config'
 import { Command } from 'commander'
-import { confirm, password, isCancel, intro } from '@clack/prompts'
+import { confirm, password, isCancel, intro, spinner } from '@clack/prompts'
 import chalk from 'chalk'
 import { existsSync } from 'node:fs'
+import type { TelegramClient } from '@mtcute/node'
 import { createClient } from './client.js'
 import { ensureAuthenticated } from './auth.js'
 import { refreshTrackedChats, syncFolderConfig } from './folders/index.js'
@@ -25,6 +26,35 @@ function formatDuration(ms: number): string {
   return `${seconds}s`
 }
 
+async function createClientWithPasswordRetry(
+  message: string,
+  options: { silentCancel?: boolean } = {}
+): Promise<TelegramClient> {
+  for (;;) {
+    const sessionPass = await password({ message })
+    if (isCancel(sessionPass)) {
+      if (!options.silentCancel) {
+        console.log(chalk.yellow('Cancelled'))
+      }
+      process.exit(0)
+    }
+
+    const tg = createClient(sessionPass as string)
+    try {
+      await tg.connect()
+      return tg
+    } catch (error) {
+      await tg.destroy().catch(() => undefined)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (/invalid session password/i.test(errorMessage)) {
+        console.error(chalk.red('Invalid session password. Please try again.'))
+        continue
+      }
+      throw error
+    }
+  }
+}
+
 const program = new Command()
   .name('symbiotic-chats')
   .description('Export Telegram chat history to Markdown')
@@ -37,16 +67,9 @@ program
     try {
       // Prompt for session password (decrypts/encrypts session.db)
       intro(chalk.cyan('Session Password'))
-      const sessionPass = await password({
-        message: 'Enter session password (encrypts your session file):'
-      })
-      if (isCancel(sessionPass)) {
-        console.log(chalk.yellow('Cancelled'))
-        process.exit(0)
-      }
-
-      const tg = createClient(sessionPass)
-      await tg.connect()
+      const tg = await createClientWithPasswordRetry(
+        'Enter session password (encrypts your session file):'
+      )
 
       const user = await ensureAuthenticated(tg)
       console.log(chalk.green(`\nLogged in as: ${user.firstName} ${user.lastName || ''} (@${user.username || 'no username'})`))
@@ -69,19 +92,9 @@ program
   .action(async (options) => {
     try {
       intro(chalk.cyan('Export Setup'))
-      const sessionPass = await password({
-        message: 'Enter session password:'
-      })
-      if (isCancel(sessionPass)) {
-        console.log(chalk.yellow('Cancelled'))
-        process.exit(0)
-      }
-
-      const tg = createClient(sessionPass as string)
+      const tg = await createClientWithPasswordRetry('Enter session password:')
 
       try {
-        await tg.connect()
-
         // Ensure user is authenticated before accessing folders
         await ensureAuthenticated(tg)
 
@@ -107,19 +120,11 @@ program
   .action(async () => {
     try {
       intro(chalk.cyan('Export Chats'))
-      const sessionPass = await password({
-        message: 'Enter session password:'
+      const tg = await createClientWithPasswordRetry('Enter session password:', {
+        silentCancel: true,
       })
-      if (isCancel(sessionPass)) {
-        console.log(chalk.yellow('Cancelled'))
-        process.exit(0)
-      }
-
-      const tg = createClient(sessionPass as string)
 
       try {
-        await tg.connect()
-
         // Ensure user is authenticated
         await ensureAuthenticated(tg)
 
@@ -180,40 +185,67 @@ program
   })
 
 program
-  .command('import-contacts')
-  .description('Import contacts by phone numbers, output CSV to stdout')
+  .command('check-phones')
+  .description('Check phone numbers via contacts import, output CSV to stdout')
   .argument('<phones>', 'Comma-separated phone numbers (e.g., +1234567890,+0987654321)')
-  .action(async (phonesArg: string) => {
+  .option('--batch <number>', 'Contacts per import batch (default: 1)', '1')
+  .option('--delay <number>', 'Delay between batches in ms (default: 1500)', '1500')
+  .option('--keep', 'Do not remove imported contacts after checking')
+  .option('--debug', 'Print import request/response details to stderr')
+  .action(async (phonesArg: string, options: { batch: string; delay: string; keep?: boolean; debug?: boolean }) => {
     try {
       // Parse comma-separated phones
-      const phones = phonesArg.split(',').map(p => p.trim()).filter(Boolean)
+      const rawParts = phonesArg.split(',')
+      const phones = rawParts.map(p => p.trim()).filter(Boolean)
+      const skippedCount = rawParts.length - phones.length
 
       if (phones.length === 0) {
         console.error('Error: No phone numbers provided')
         process.exit(1)
       }
-
-      // Session password via prompt (stderr so it doesn't pollute CSV output)
-      const sessionPass = await password({
-        message: 'Enter session password:'
-      })
-      if (isCancel(sessionPass)) {
-        process.exit(0)
+      if (skippedCount > 0) {
+        console.error(`Skipped ${skippedCount} empty entries after parsing`)
       }
 
-      const tg = createClient(sessionPass as string)
+      // Session password via prompt (stderr so it doesn't pollute CSV output)
+      const tg = await createClientWithPasswordRetry('Enter session password:')
 
       try {
-        await tg.connect()
         await ensureAuthenticated(tg)
 
-        const results = await importContactsByPhone(tg, phones)
+        const parsedBatchSize = Number.parseInt(options.batch, 10)
+        const parsedDelayMs = Number.parseInt(options.delay, 10)
+        if (!Number.isFinite(parsedBatchSize) || parsedBatchSize < 1) {
+          console.error('Error: --batch must be a positive integer')
+          process.exit(1)
+        }
+        if (!Number.isFinite(parsedDelayMs) || parsedDelayMs < 0) {
+          console.error('Error: --delay must be zero or a positive integer')
+          process.exit(1)
+        }
+
+        const s = spinner()
+        s.start(`Checked 0 of ${phones.length} phones...`)
+
+        const results = await importContactsByPhone(tg, phones, {
+          batchSize: parsedBatchSize,
+          delayMs: parsedDelayMs,
+          deleteAfter: !options.keep,
+          debug: options.debug,
+          onProgress: (checked, total) => {
+            s.message(`Checked ${checked} of ${total} phones...`)
+          }
+        })
+
+        s.stop(`Checked ${phones.length} phones`)
+        const validResults = results.filter(r => r.userId != null)
 
         // Output CSV to stdout (header + data)
-        console.log('user_id,phone_number')
-        for (const r of results) {
-          console.log(`${r.userId ?? ''},${r.phone}`)
+        console.log('user_id,phone_number,username')
+        for (const r of validResults) {
+          console.log(`${r.userId},${r.phone},${r.username ?? ''}`)
         }
+        console.error(`checked=${results.length}, valid=${validResults.length}`)
 
       } finally {
         await tg.destroy()

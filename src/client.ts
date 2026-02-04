@@ -28,7 +28,7 @@ export function createClient(sessionPassword: string): TelegramClient {
           },
         }),
         networkMiddlewares.onRpcError((ctx, error) => {
-          // console.error(`RPC error in ${ctx.request._}: ${error.error_message}`)
+          console.error(`RPC error in ${ctx.request._}: ${error.error_message}`)
         }),
       ],
     },
