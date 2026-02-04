@@ -10,6 +10,7 @@ import { refreshTrackedChats, syncFolderConfig } from './folders/index.js'
 import { loadConfig, CONFIG_PATH } from './config/index.js'
 import { syncChats } from './sync/index.js'
 import { importContactsByPhone } from './contacts/import.js'
+import { exportRecencyChats } from './messages/recency.js'
 
 /**
  * Format duration in milliseconds to human-readable string.
@@ -24,6 +25,48 @@ function formatDuration(ms: number): string {
     return `${minutes}m ${seconds}s`
   }
   return `${seconds}s`
+}
+
+function parseCutoffDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+  const year = Number.parseInt(match[1], 10)
+  const month = Number.parseInt(match[2], 10)
+  const day = Number.parseInt(match[3], 10)
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null
+  }
+  return date
+}
+
+async function resolveExportConfig(tg: TelegramClient) {
+  let config = loadConfig()
+  if (config.trackedFolderIds.length === 0) {
+    const shouldSelect = await confirm({
+      message: 'No folders selected. Run setup to choose folders for export?'
+    })
+    if (isCancel(shouldSelect) || !shouldSelect) {
+      console.log(chalk.yellow('No folders selected. Export cancelled.'))
+      return null
+    }
+    await syncFolderConfig(tg, true)
+    config = loadConfig()
+  }
+
+  const refreshed = await refreshTrackedChats(tg, config)
+  const totalChats = refreshed.config.trackedChatIds.length
+  if (totalChats === 0) {
+    console.log(chalk.yellow('No chats found in selected folders. Run "symbiotic-chats setup --select" to update selection.'))
+    return null
+  }
+
+  return refreshed.config
 }
 
 async function createClientWithPasswordRetry(
@@ -114,9 +157,11 @@ program
     }
   })
 
-program
+const exportCommand = program
   .command('export')
   .description('Export chats from tracked folders')
+
+exportCommand
   .action(async () => {
     try {
       intro(chalk.cyan('Export Chats'))
@@ -128,30 +173,13 @@ program
         // Ensure user is authenticated
         await ensureAuthenticated(tg)
 
-        // Load config and ensure folders are selected
-        let config = loadConfig()
-        if (config.trackedFolderIds.length === 0) {
-          const shouldSelect = await confirm({
-            message: 'No folders selected. Run setup to choose folders for export?'
-          })
-          if (isCancel(shouldSelect) || !shouldSelect) {
-            console.log(chalk.yellow('No folders selected. Export cancelled.'))
-            return
-          }
-          await syncFolderConfig(tg, true)
-          config = loadConfig()
-        }
-
-        const refreshed = await refreshTrackedChats(tg, config)
-        const totalChats = refreshed.config.trackedChatIds.length
-
-        if (totalChats === 0) {
-          console.log(chalk.yellow('No chats found in selected folders. Run "symbiotic-chats setup --select" to update selection.'))
+        const config = await resolveExportConfig(tg)
+        if (!config) {
           return
         }
 
         // Run incremental sync
-        const result = await syncChats(tg, refreshed.config)
+        const result = await syncChats(tg, config)
 
         // Display sync summary
         const duration = formatDuration(result.durationMs)
@@ -171,6 +199,92 @@ program
         }
         console.log(chalk.green(`\n${parts.join(', ')} in ${duration}`))
 
+      } finally {
+        await tg.destroy()
+      }
+    } catch (e) {
+      if (e instanceof Error) {
+        console.error(chalk.red(`Error: ${e.message}`))
+      } else {
+        console.error(chalk.red('An unexpected error occurred'))
+      }
+      process.exit(1)
+    }
+  })
+
+exportCommand
+  .command('recent')
+  .description('Export recent messages across all chats to data/archive/recent.md')
+  .requiredOption('--cutoff <YYYY-MM-DD>', 'Cutoff date for recent messages (inclusive)')
+  .action(async (options: { cutoff: string }) => {
+    try {
+      intro(chalk.cyan('Export Recent Messages'))
+      const cutoffDate = parseCutoffDate(options.cutoff)
+      if (!cutoffDate) {
+        console.error(chalk.red('Error: --cutoff must be in YYYY-MM-DD format'))
+        process.exit(1)
+      }
+      const tg = await createClientWithPasswordRetry('Enter session password:', {
+        silentCancel: true,
+      })
+
+      try {
+        await ensureAuthenticated(tg)
+        const config = await resolveExportConfig(tg)
+        if (!config) return
+
+        const result = await exportRecencyChats(
+          tg,
+          config,
+          cutoffDate,
+          'recent',
+          options.cutoff
+        )
+        const duration = formatDuration(result.durationMs)
+        console.log(chalk.green(`\n${result.messagesExported} recent messages exported to ${result.outputPath} in ${duration}`))
+      } finally {
+        await tg.destroy()
+      }
+    } catch (e) {
+      if (e instanceof Error) {
+        console.error(chalk.red(`Error: ${e.message}`))
+      } else {
+        console.error(chalk.red('An unexpected error occurred'))
+      }
+      process.exit(1)
+    }
+  })
+
+exportCommand
+  .command('historical')
+  .description('Export historical messages across all chats to data/archive/historical.md')
+  .requiredOption('--cutoff <YYYY-MM-DD>', 'Cutoff date for historical messages (exclusive)')
+  .action(async (options: { cutoff: string }) => {
+    try {
+      intro(chalk.cyan('Export Historical Messages'))
+      const cutoffDate = parseCutoffDate(options.cutoff)
+      if (!cutoffDate) {
+        console.error(chalk.red('Error: --cutoff must be in YYYY-MM-DD format'))
+        process.exit(1)
+      }
+      const tg = await createClientWithPasswordRetry('Enter session password:', {
+        silentCancel: true,
+      })
+
+      try {
+        await ensureAuthenticated(tg)
+        const config = await resolveExportConfig(tg)
+        if (!config) return
+
+        const result = await exportRecencyChats(
+          tg,
+          config,
+          cutoffDate,
+          'historical',
+          options.cutoff
+        )
+        const duration = formatDuration(result.durationMs)
+        console.log(chalk.green(`\n${result.messagesExported} historical messages exported to ${result.outputPath} in ${duration}`))
       } finally {
         await tg.destroy()
       }

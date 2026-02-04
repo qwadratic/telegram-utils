@@ -137,3 +137,17 @@ export async function writeChatFile(
 
   return { filesWritten: 1, messagesWritten: orderedMessages.length }
 }
+
+/**
+ * Write a combined archive file in data/archive.
+ */
+export function writeCombinedArchiveFile(
+  fileName: string,
+  content: string
+): string {
+  const dirPath = join('data', 'archive')
+  mkdirSync(dirPath, { recursive: true })
+  const filePath = join(dirPath, fileName)
+  writeFileSync(filePath, content, 'utf-8')
+  return filePath
+}
