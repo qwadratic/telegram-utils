@@ -29,8 +29,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Output Format
 
-- [x] **OUTP-01**: Messages are written to monthly files: `data/archive/YYYY-MM/chat-name.md`
-- [x] **OUTP-02**: Each file has YAML frontmatter with chat_name, chat_id, first_message_id, last_message_id, exported_at
+- [x] **OUTP-01**: Messages are written to a single file per chat: `data/archive/chat-name.md`
+- [x] **OUTP-02**: Each file has YAML frontmatter with chat_name, chat_id, first_message_id, last_message_id, message_count, min_date, max_date, exported_at
 - [x] **OUTP-03**: Filenames are sanitized; original chat name preserved in frontmatter; fallback to chat ID if all special chars
 
 ### Incremental Sync

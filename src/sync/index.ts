@@ -2,9 +2,9 @@ import type { TelegramClient, Message } from '@mtcute/node'
 import { spinner, log } from '@clack/prompts'
 import type { Config } from '../config/index.js'
 import { loadState, saveState, updateChatState } from './state.js'
-import { appendToMonthlyFile, getCurrentYearMonth } from './append.js'
+import { appendToChatFile } from './append.js'
 import { fetchMessages } from '../messages/fetch.js'
-import { writeMonthlyFiles, groupByMonth } from '../messages/writer.js'
+import { writeChatFile } from '../messages/writer.js'
 
 /**
  * Result from a sync operation.
@@ -67,7 +67,6 @@ export async function syncChats(
   const s = spinner()
   s.start('Starting sync...')
 
-  const currentMonth = getCurrentYearMonth()
   let messagesAppended = 0
   let filesUpdated = 0
   let chatsProcessed = 0
@@ -115,19 +114,14 @@ export async function syncChats(
 
     if (isFirstSync || !lastMsgId) {
       // Full export for new chats
-      const { messagesWritten, filesWritten } = await writeMonthlyFiles(chatName, chatId, messages)
+      const { messagesWritten, filesWritten } = await writeChatFile(chatName, chatId, messages)
       messagesAppended += messagesWritten
       filesUpdated += filesWritten
     } else {
-      // Incremental: append all months returned since lastMessageId
-      const grouped = groupByMonth(messages)
-
-      for (const [month, msgs] of grouped) {
-        if (msgs.length === 0) continue
-        const result = appendToMonthlyFile(chatName, chatId, month, msgs)
-        messagesAppended += result.messagesAppended
-        if (result.messagesAppended > 0) filesUpdated++
-      }
+      // Incremental: append all new messages to existing chat file
+      const result = appendToChatFile(chatName, chatId, messages)
+      messagesAppended += result.messagesAppended
+      if (result.messagesAppended > 0) filesUpdated++
     }
 
     // Update state for this chat

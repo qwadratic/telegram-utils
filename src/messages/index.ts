@@ -2,7 +2,7 @@ import type { TelegramClient, Message } from '@mtcute/node'
 import { spinner } from '@clack/prompts'
 import type { Config } from '../config/index.js'
 import { fetchMessages, sleep } from './fetch.js'
-import { writeMonthlyFiles } from './writer.js'
+import { writeChatFile } from './writer.js'
 
 /**
  * Result from a complete export operation.
@@ -98,7 +98,7 @@ export async function exportChats(
     }
 
     // Write to monthly files
-    const { messagesWritten } = await writeMonthlyFiles(chatName, chatId, messages)
+    const { messagesWritten } = await writeChatFile(chatName, chatId, messages)
 
     chatsExported++
     messagesExported += messagesWritten

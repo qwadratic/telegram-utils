@@ -13,27 +13,49 @@ export interface AppendResult {
 }
 
 /**
- * Get current year-month string in YYYY-MM format.
+ * Extract a scalar frontmatter value by key.
  */
-export function getCurrentYearMonth(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  return `${year}-${month}`
+function getFrontmatterValue(frontmatter: string, key: string): string | null {
+  const regex = new RegExp(`^${key}:\\s*(.+)$`, 'm')
+  const match = frontmatter.match(regex)
+  if (!match) return null
+  const rawValue = match[1].trim()
+  if (rawValue === 'null') return null
+  if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
+    return rawValue.slice(1, -1).replace(/\\"/g, '"')
+  }
+  return rawValue
 }
 
 /**
- * Update frontmatter with new last_message_id and exported_at, then append messages.
+ * Sort messages oldest-first (chronological).
+ */
+function sortMessagesChronological(messages: Message[]): Message[] {
+  return [...messages].sort((a, b) => {
+    const timeDiff = a.date.getTime() - b.date.getTime()
+    if (timeDiff !== 0) return timeDiff
+    return a.id - b.id
+  })
+}
+
+/**
+ * Update frontmatter with new counts and dates, then append messages.
  *
  * @param existingContent - Current file content
  * @param newMessages - Formatted messages to append
  * @param newLastMsgId - ID of the last message being appended
+ * @param newMessageCount - Number of messages being appended
+ * @param newMinDate - Earliest date of appended messages (ISO 8601)
+ * @param newMaxDate - Latest date of appended messages (ISO 8601)
  * @returns Updated file content
  */
 function updateFrontmatterAndAppend(
   existingContent: string,
   newMessages: string,
-  newLastMsgId: number
+  newLastMsgId: number,
+  newMessageCount: number,
+  newMinDate: string,
+  newMaxDate: string
 ): string {
   // Match frontmatter block
   const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/
@@ -46,30 +68,41 @@ function updateFrontmatterAndAppend(
   const frontmatter = match[1]
   const body = existingContent.slice(match[0].length)
 
-  // Update last_message_id and exported_at, keep others unchanged
+  const existingCount = Number(getFrontmatterValue(frontmatter, 'message_count') ?? 0)
+  const existingMinDate = getFrontmatterValue(frontmatter, 'min_date')
+  const existingMaxDate = getFrontmatterValue(frontmatter, 'max_date')
+
+  const minDate = existingMinDate
+    ? new Date(existingMinDate) < new Date(newMinDate) ? existingMinDate : newMinDate
+    : newMinDate
+  const maxDate = existingMaxDate
+    ? new Date(existingMaxDate) > new Date(newMaxDate) ? existingMaxDate : newMaxDate
+    : newMaxDate
+
+  // Update last_message_id, message_count, dates, and exported_at
   const updatedFrontmatter = frontmatter
     .replace(/^last_message_id: .+$/m, `last_message_id: ${newLastMsgId}`)
+    .replace(/^message_count: .+$/m, `message_count: ${existingCount + newMessageCount}`)
+    .replace(/^min_date: .+$/m, `min_date: "${minDate}"`)
+    .replace(/^max_date: .+$/m, `max_date: "${maxDate}"`)
     .replace(/^exported_at: .+$/m, `exported_at: "${new Date().toISOString()}"`)
 
   return `---\n${updatedFrontmatter}\n---\n${body}${newMessages}`
 }
 
 /**
- * Append messages to an existing monthly archive file.
+ * Append messages to an existing chat archive file.
  *
- * Per CONTEXT.md: Only append to existing files, skip if file doesn't exist
- * (old months without existing files are not created during incremental sync).
+ * Per CONTEXT.md: Only append to existing files, skip if file doesn't exist.
  *
  * @param chatName - Display name of the chat
  * @param chatId - Numeric chat ID
- * @param yearMonth - Year-month in YYYY-MM format
- * @param messages - Array of messages to append (should be in chronological order)
+ * @param messages - Array of messages to append (can be in any order)
  * @returns Result with count of messages appended
  */
-export function appendToMonthlyFile(
+export function appendToChatFile(
   chatName: string,
   chatId: number,
-  yearMonth: string,
   messages: Message[]
 ): AppendResult {
   // Skip if no messages
@@ -81,7 +114,7 @@ export function appendToMonthlyFile(
   const safeFilename = sanitizeFilename(chatName, chatId)
 
   // Build file path
-  const filePath = join('data', 'archive', yearMonth, `${safeFilename}.md`)
+  const filePath = join('data', 'archive', `${safeFilename}.md`)
 
   // Skip if file doesn't exist (per CONTEXT.md: don't create historical files)
   if (!existsSync(filePath)) {
@@ -91,20 +124,27 @@ export function appendToMonthlyFile(
   // Read existing content
   const existingContent = readFileSync(filePath, 'utf-8')
 
+  const orderedMessages = sortMessagesChronological(messages)
+
   // Format new messages
   let newMessages = ''
-  for (const msg of messages) {
+  for (const msg of orderedMessages) {
     newMessages += formatMessage(msg)
   }
 
   // Get the last message ID for frontmatter update
-  const newLastMsgId = messages[messages.length - 1].id
+  const newLastMsgId = orderedMessages[orderedMessages.length - 1].id
+  const newMinDate = orderedMessages[0].date.toISOString()
+  const newMaxDate = orderedMessages[orderedMessages.length - 1].date.toISOString()
 
   // Update frontmatter and append messages
   const updatedContent = updateFrontmatterAndAppend(
     existingContent,
     newMessages,
-    newLastMsgId
+    newLastMsgId,
+    orderedMessages.length,
+    newMinDate,
+    newMaxDate
   )
 
   // Write updated content

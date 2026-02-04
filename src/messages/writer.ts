@@ -5,54 +5,36 @@ import { sanitizeFilename } from '../utils/filename.js'
 import { formatMessage } from './format.js'
 
 /**
- * Extract YYYY-MM key from a Date object.
+ * Sort messages oldest-first (chronological).
  */
-function getYearMonth(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  return `${year}-${month}`
+function sortMessagesChronological(messages: Message[]): Message[] {
+  return [...messages].sort((a, b) => {
+    const timeDiff = a.date.getTime() - b.date.getTime()
+    if (timeDiff !== 0) return timeDiff
+    return a.id - b.id
+  })
 }
 
 /**
- * Group messages by month (YYYY-MM).
- *
- * Messages within each group are sorted oldest-first (reversed from API order).
- *
- * @param messages - Array of messages to group (typically newest-first from API)
- * @returns Map with YYYY-MM keys and arrays of messages sorted oldest-first
- */
-export function groupByMonth(messages: Message[]): Map<string, Message[]> {
-  const groups = new Map<string, Message[]>()
-
-  for (const msg of messages) {
-    const key = getYearMonth(msg.date)
-    const group = groups.get(key) || []
-    group.push(msg)
-    groups.set(key, group)
-  }
-
-  // Reverse each group so messages are oldest-first (chronological)
-  for (const [key, group] of groups) {
-    groups.set(key, group.reverse())
-  }
-
-  return groups
-}
-
-/**
- * Create YAML frontmatter for a monthly archive file.
+ * Create YAML frontmatter for a chat archive file.
  *
  * @param chatName - Display name of the chat
  * @param chatId - Numeric chat ID
  * @param firstMsgId - ID of the first (oldest) message in this file
  * @param lastMsgId - ID of the last (newest) message in this file
+ * @param messageCount - Total messages in this file
+ * @param minDate - Earliest message date (ISO 8601)
+ * @param maxDate - Latest message date (ISO 8601)
  * @returns YAML frontmatter string including the trailing newlines
  */
 export function createFrontmatter(
   chatName: string,
   chatId: number,
   firstMsgId: number,
-  lastMsgId: number
+  lastMsgId: number,
+  messageCount: number,
+  minDate: string,
+  maxDate: string
 ): string {
   const now = new Date().toISOString()
   // Escape quotes in chat name with backslash
@@ -63,6 +45,9 @@ chat_name: "${escapedName}"
 chat_id: ${chatId}
 first_message_id: ${firstMsgId}
 last_message_id: ${lastMsgId}
+message_count: ${messageCount}
+min_date: "${minDate}"
+max_date: "${maxDate}"
 exported_at: "${now}"
 ---
 
@@ -81,6 +66,9 @@ chat_name: "${escapedName}"
 chat_id: ${chatId}
 first_message_id: null
 last_message_id: null
+message_count: 0
+min_date: null
+max_date: null
 exported_at: "${now}"
 ---
 
@@ -88,9 +76,9 @@ exported_at: "${now}"
 }
 
 /**
- * Write messages to monthly archive files.
+ * Write messages to a single chat archive file.
  *
- * Creates files at: data/archive/YYYY-MM/{sanitized-chat-name}.md
+ * Creates files at: data/archive/{sanitized-chat-name}.md
  *
  * Each file contains:
  * - YAML frontmatter with chat metadata
@@ -101,7 +89,7 @@ exported_at: "${now}"
  * @param messages - Array of messages to write (can be in any order)
  * @returns Counts of files and messages written
  */
-export async function writeMonthlyFiles(
+export async function writeChatFile(
   chatName: string,
   chatId: number,
   messages: Message[]
@@ -109,8 +97,7 @@ export async function writeMonthlyFiles(
   // Create an empty file if no messages
   if (messages.length === 0) {
     const safeFilename = sanitizeFilename(chatName, chatId)
-    const yearMonth = getYearMonth(new Date())
-    const dirPath = join('data', 'archive', yearMonth)
+    const dirPath = join('data', 'archive')
     mkdirSync(dirPath, { recursive: true })
     const filePath = join(dirPath, `${safeFilename}.md`)
     const content = `${createEmptyFrontmatter(chatName, chatId)}No messages.\n`
@@ -118,40 +105,35 @@ export async function writeMonthlyFiles(
     return { filesWritten: 1, messagesWritten: 0 }
   }
 
-  // Group messages by month
-  const grouped = groupByMonth(messages)
+  const orderedMessages = sortMessagesChronological(messages)
 
   // Sanitize chat name for filesystem
   const safeFilename = sanitizeFilename(chatName, chatId)
 
-  let filesWritten = 0
-  let messagesWritten = 0
+  const dirPath = join('data', 'archive')
+  mkdirSync(dirPath, { recursive: true })
+  const filePath = join(dirPath, `${safeFilename}.md`)
 
-  for (const [yearMonth, monthMessages] of grouped) {
-    // Create directory if needed
-    const dirPath = join('data', 'archive', yearMonth)
-    mkdirSync(dirPath, { recursive: true })
+  const firstMsgId = orderedMessages[0].id
+  const lastMsgId = orderedMessages[orderedMessages.length - 1].id
+  const minDate = orderedMessages[0].date.toISOString()
+  const maxDate = orderedMessages[orderedMessages.length - 1].date.toISOString()
 
-    // Build file path
-    const filePath = join(dirPath, `${safeFilename}.md`)
+  let content = createFrontmatter(
+    chatName,
+    chatId,
+    firstMsgId,
+    lastMsgId,
+    orderedMessages.length,
+    minDate,
+    maxDate
+  )
 
-    // Get first and last message IDs (messages are now sorted oldest-first)
-    const firstMsgId = monthMessages[0].id
-    const lastMsgId = monthMessages[monthMessages.length - 1].id
-
-    // Build file content
-    let content = createFrontmatter(chatName, chatId, firstMsgId, lastMsgId)
-
-    for (const msg of monthMessages) {
-      content += formatMessage(msg)
-    }
-
-    // Write file
-    writeFileSync(filePath, content, 'utf-8')
-
-    filesWritten++
-    messagesWritten += monthMessages.length
+  for (const msg of orderedMessages) {
+    content += formatMessage(msg)
   }
 
-  return { filesWritten, messagesWritten }
+  writeFileSync(filePath, content, 'utf-8')
+
+  return { filesWritten: 1, messagesWritten: orderedMessages.length }
 }

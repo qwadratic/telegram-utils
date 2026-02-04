@@ -21,13 +21,11 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 - [ ] List user's Telegram folders (DialogFilters)
 - [ ] Folder selection persists; store folder IDs and tracked chat IDs in config
 - [ ] Export all chats from tracked folders
-- [ ] Output structure: `data/archive/YYYY-MM/sanitized-chat-name.md`
-- [ ] Frontmatter with chat_name, chat_id, first/last message IDs, exported_at
+- [ ] Frontmatter with chat_name, chat_id, first/last message IDs, exported_at (and more)
 - [ ] Messages in chronological order (oldest to newest)
 - [ ] Message format: `[timestamp] [id:X] [reply:Y] [attachment:type] **Name (@username)**: text`
 - [ ] Track last exported message ID per chat in sync state
 - [ ] Incremental sync: only fetch messages newer than last exported
-- [ ] Default start date 2025-01-01 if no existing archive
 - [ ] Refresh tracked chats from selected folders before export
 - [ ] Keep archives for removed chats/folders (never delete)
 - [ ] Sanitize chat names for filenames (fallback to chat ID if all special chars)
@@ -74,4 +72,3 @@ Reliably export and incrementally sync Telegram chats to searchable Markdown wit
 | Additive-only updates | Prevent accidental data loss, archives are append-only | — Pending |
 
 ---
-*Last updated: 2026-02-03 after folder refresh on export update*
