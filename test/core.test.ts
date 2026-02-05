@@ -6,6 +6,7 @@ import { formatMessage } from '../src/messages/format.js'
 import { exportRecencyChats } from '../src/messages/recency.js'
 import { sanitizeFilename } from '../src/utils/filename.js'
 import { loadConfig } from '../src/config/index.js'
+import { normalizePhoneInput, parseCutoffDate } from '../src/cli/args.js'
 import { makeMessage, makeMockClient, withTempDir } from './helpers.js'
 
 test('formatMessage includes forward and reply context', () => {
@@ -27,6 +28,21 @@ test('formatMessage includes forward and reply context', () => {
 test('sanitizeFilename removes invalid chars and falls back', () => {
   assert.equal(sanitizeFilename('A/B:C*D?'), 'ABCD')
   assert.equal(sanitizeFilename('   ', 123), 'chat-123')
+})
+
+test('parseCutoffDate validates YYYY-MM-DD', () => {
+  const valid = parseCutoffDate('2025-02-10')
+  assert.ok(valid)
+  assert.equal(valid?.toISOString(), '2025-02-10T00:00:00.000Z')
+  assert.equal(parseCutoffDate('2025-13-01'), null)
+  assert.equal(parseCutoffDate('2025-02-31'), null)
+  assert.equal(parseCutoffDate('bad'), null)
+})
+
+test('normalizePhoneInput strips non-digits and keeps plus', () => {
+  assert.equal(normalizePhoneInput(' +1 (234) 567-8900 '), '+12345678900')
+  assert.equal(normalizePhoneInput(''), '')
+  assert.equal(normalizePhoneInput('abc'), '')
 })
 
 test('exportRecencyChats writes combined archive with cutoff', async () => {
@@ -81,17 +97,17 @@ test('exportRecencyChats writes historical archive with cutoff', async () => {
   })
 })
 
-test('loadConfig migrates legacy trackedFolders format', async () => {
+test('loadConfig reads tracked ids', async () => {
   await withTempDir(async () => {
     const configDir = join('data')
     mkdirSync(configDir, { recursive: true })
     const configPath = join(configDir, 'config.json')
     writeFileSync(
       configPath,
-      JSON.stringify({ trackedFolders: { 1: [10, 20], 2: [30] } }, null, 2)
+      JSON.stringify({ trackedFolderIds: [1, 2], trackedChatIds: [10, 20, 30] }, null, 2)
     )
     const config = loadConfig()
-    assert.deepEqual(config.trackedFolderIds.sort(), [1, 2])
-    assert.deepEqual(config.trackedChatIds.sort(), [10, 20, 30])
+    assert.deepEqual(config.trackedFolderIds, [1, 2])
+    assert.deepEqual(config.trackedChatIds, [10, 20, 30])
   })
 })

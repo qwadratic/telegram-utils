@@ -25,23 +25,12 @@ export function loadConfig(): Config {
   }
 
   const content = readFileSync(CONFIG_PATH, 'utf-8')
-  const parsed = JSON.parse(content) as Partial<Config> & {
-    trackedFolders?: Record<number, number[]>
-  }
+  const parsed = JSON.parse(content) as Partial<Config>
 
   if (parsed.trackedFolderIds && parsed.trackedChatIds) {
     return {
       trackedFolderIds: parsed.trackedFolderIds,
       trackedChatIds: parsed.trackedChatIds
-    }
-  }
-
-  if (parsed.trackedFolders) {
-    const folderIds = Object.keys(parsed.trackedFolders).map(Number)
-    const chatIds = Object.values(parsed.trackedFolders).flat()
-    return {
-      trackedFolderIds: folderIds,
-      trackedChatIds: chatIds
     }
   }
 

@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "tsx --test",
-    "coverage": "c8 tsx --test"
+    "coverage": "rm -rf coverage && npx c8 tsx --test"
   },
   "keywords": [
     "telegram",

@@ -13,6 +13,8 @@ import { loadConfig, CONFIG_PATH } from './config/index.js'
 import { syncChats } from './sync/index.js'
 import { importContactsByPhone } from './contacts/import.js'
 import { exportRecencyChats } from './messages/recency.js'
+import { normalizePhoneInput, parseCutoffDate } from './cli/args.js'
+import { handleChalkError, handlePlainError, runCommand } from './cli/errors.js'
 
 /**
  * Format duration in milliseconds to human-readable string.
@@ -27,62 +29,6 @@ function formatDuration(ms: number): string {
     return `${minutes}m ${seconds}s`
   }
   return `${seconds}s`
-}
-
-function parseCutoffDate(value: string): Date | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (!match) return null
-  const year = Number.parseInt(match[1], 10)
-  const month = Number.parseInt(match[2], 10)
-  const day = Number.parseInt(match[3], 10)
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null
-  const date = new Date(Date.UTC(year, month - 1, day))
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return null
-  }
-  return date
-}
-
-function normalizePhoneInput(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed) return ''
-  const hasPlus = trimmed.startsWith('+')
-  const digitsOnly = trimmed.replace(/\D/g, '')
-  if (!digitsOnly) return ''
-  return hasPlus ? `+${digitsOnly}` : digitsOnly
-}
-
-function handleChalkError(error: unknown): never {
-  if (error instanceof Error) {
-    console.error(chalk.red(`Error: ${error.message}`))
-  } else {
-    console.error(chalk.red('An unexpected error occurred'))
-  }
-  process.exit(1)
-}
-
-function handlePlainError(error: unknown): never {
-  if (error instanceof Error) {
-    console.error(`Error: ${error.message}`)
-  } else {
-    console.error('An unexpected error occurred')
-  }
-  process.exit(1)
-}
-
-async function runCommand(
-  fn: () => Promise<void>,
-  onError: (error: unknown) => never = handleChalkError
-): Promise<void> {
-  try {
-    await fn()
-  } catch (error) {
-    onError(error)
-  }
 }
 
 async function withAuthenticatedClient<T>(

@@ -16,7 +16,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **FOLD-01**: User can list all Telegram folders (DialogFilters) with names and IDs
 - [x] **FOLD-02**: User can select folders to track, tool enumerates all chats within selected folders
-- [x] **FOLD-03**: Selected folder IDs persist in config file between runs (legacy trackedFolders migrate on load)
+- [x] **FOLD-03**: Selected folder IDs persist in config file between runs
 - [x] **FOLD-04**: On startup, tool refreshes tracked chats from selected folders and updates config when changed
 
 ### Message Export
