@@ -8,7 +8,7 @@ export function registerExportHistoricalCommand(exportCommand: Command): void {
   exportCommand
     .command('historical')
     .description('Export historical messages across all chats to data/archive/historical.md')
-    .option('--cutoff <YYYY-MM-DD>', 'Cutoff date for historical messages (exclusive)')
+    .option('--cutoff <value>', 'Cutoff date (YYYY-MM-DD or shortcut), exclusive')
     .action(async (options: { cutoff?: string }) => {
       await runCommand(async () => {
         const cutoffDate = options.cutoff ? parseCutoffDate(options.cutoff) : null
