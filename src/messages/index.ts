@@ -40,7 +40,7 @@ async function getChatName(tg: TelegramClient, chatId: number): Promise<string> 
  * - Fetches messages with rate limiting (1.5s + jitter between chunks)
  * - Displays rate limit waits explicitly
  * - Skips empty chats with log message
- * - Writes messages to monthly Markdown files
+ * - Writes messages to per-chat Markdown files
  *
  * @param tg - Connected Telegram client
  * @param config - Configuration with tracked chats
@@ -90,14 +90,12 @@ export async function exportChats(
       }
     }
 
-    // Skip empty chats
     if (messages.length === 0) {
-      console.log(`Skipping empty chat: ${chatName}`)
+      console.log(`Empty chat: ${chatName}`)
       chatsSkipped++
-      continue
     }
 
-    // Write to monthly files
+    // Write to per-chat file (handles empty chats)
     const { messagesWritten } = await writeChatFile(chatName, chatId, messages)
 
     chatsExported++

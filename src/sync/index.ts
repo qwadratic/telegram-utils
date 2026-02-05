@@ -105,8 +105,14 @@ export async function syncChats(
     }
 
     if (messages.length === 0) {
-      skippedChats.push(`${chatName} (${chatId})`)
-      chatsSkipped++
+      if (isFirstSync || !lastMsgId) {
+        const { filesWritten } = await writeChatFile(chatName, chatId, messages)
+        filesUpdated += filesWritten
+        updateChatState(state, chatId, 0, chatName)
+      } else {
+        skippedChats.push(`${chatName} (${chatId})`)
+        chatsSkipped++
+      }
       continue
     }
 

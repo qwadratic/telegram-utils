@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Message } from '@mtcute/node'
 import { formatMessage } from '../messages/format.js'
+import { createFrontmatter } from '../messages/writer.js'
 import { sanitizeFilename } from '../utils/filename.js'
 
 /**
@@ -79,13 +80,25 @@ function updateFrontmatterAndAppend(
     ? new Date(existingMaxDate) > new Date(newMaxDate) ? existingMaxDate : newMaxDate
     : newMaxDate
 
+  const upsertField = (source: string, key: string, value: string): string => {
+    const regex = new RegExp(`^${key}:\\s*.+$`, 'm')
+    if (regex.test(source)) {
+      return source.replace(regex, `${key}: ${value}`)
+    }
+    return `${source}\n${key}: ${value}`
+  }
+
   // Update last_message_id, message_count, dates, and exported_at
-  const updatedFrontmatter = frontmatter
-    .replace(/^last_message_id: .+$/m, `last_message_id: ${newLastMsgId}`)
-    .replace(/^message_count: .+$/m, `message_count: ${existingCount + newMessageCount}`)
-    .replace(/^min_date: .+$/m, `min_date: "${minDate}"`)
-    .replace(/^max_date: .+$/m, `max_date: "${maxDate}"`)
-    .replace(/^exported_at: .+$/m, `exported_at: "${new Date().toISOString()}"`)
+  let updatedFrontmatter = frontmatter
+  updatedFrontmatter = upsertField(updatedFrontmatter, 'last_message_id', String(newLastMsgId))
+  updatedFrontmatter = upsertField(
+    updatedFrontmatter,
+    'message_count',
+    String(existingCount + newMessageCount)
+  )
+  updatedFrontmatter = upsertField(updatedFrontmatter, 'min_date', `"${minDate}"`)
+  updatedFrontmatter = upsertField(updatedFrontmatter, 'max_date', `"${maxDate}"`)
+  updatedFrontmatter = upsertField(updatedFrontmatter, 'exported_at', `"${new Date().toISOString()}"`)
 
   return `---\n${updatedFrontmatter}\n---\n${body}${newMessages}`
 }
@@ -116,9 +129,32 @@ export function appendToChatFile(
   // Build file path
   const filePath = join('data', 'archive', `${safeFilename}.md`)
 
-  // Skip if file doesn't exist (per CONTEXT.md: don't create historical files)
+  // Create file if it doesn't exist to avoid data loss
   if (!existsSync(filePath)) {
-    return { messagesAppended: 0, fileCreated: false }
+    const orderedMessages = sortMessagesChronological(messages)
+    const dirPath = join('data', 'archive')
+    mkdirSync(dirPath, { recursive: true })
+
+    const firstMsgId = orderedMessages[0].id
+    const lastMsgId = orderedMessages[orderedMessages.length - 1].id
+    const minDate = orderedMessages[0].date.toISOString()
+    const maxDate = orderedMessages[orderedMessages.length - 1].date.toISOString()
+
+    let content = createFrontmatter(
+      chatName,
+      chatId,
+      firstMsgId,
+      lastMsgId,
+      orderedMessages.length,
+      minDate,
+      maxDate
+    )
+    for (const msg of orderedMessages) {
+      content += formatMessage(msg)
+    }
+    writeFileSync(filePath, content, 'utf-8')
+
+    return { messagesAppended: orderedMessages.length, fileCreated: true }
   }
 
   // Read existing content
