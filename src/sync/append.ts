@@ -1,9 +1,9 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import type { Message } from '@mtcute/node'
 import { formatMessage } from '../messages/format.js'
-import { createFrontmatter } from '../messages/writer.js'
-import { sanitizeFilename } from '../utils/filename.js'
+import { buildFrontmatter, updateFrontmatter } from '../messages/frontmatter.js'
+import { sortMessagesChronological } from '../messages/sort.js'
+import { getArchivePath } from '../utils/archive-path.js'
 
 /**
  * Result of appending messages to a monthly file.
@@ -11,32 +11,6 @@ import { sanitizeFilename } from '../utils/filename.js'
 export interface AppendResult {
   messagesAppended: number
   fileCreated: boolean
-}
-
-/**
- * Extract a scalar frontmatter value by key.
- */
-function getFrontmatterValue(frontmatter: string, key: string): string | null {
-  const regex = new RegExp(`^${key}:\\s*(.+)$`, 'm')
-  const match = frontmatter.match(regex)
-  if (!match) return null
-  const rawValue = match[1].trim()
-  if (rawValue === 'null') return null
-  if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-    return rawValue.slice(1, -1).replace(/\\"/g, '"')
-  }
-  return rawValue
-}
-
-/**
- * Sort messages oldest-first (chronological).
- */
-function sortMessagesChronological(messages: Message[]): Message[] {
-  return [...messages].sort((a, b) => {
-    const timeDiff = a.date.getTime() - b.date.getTime()
-    if (timeDiff !== 0) return timeDiff
-    return a.id - b.id
-  })
 }
 
 /**
@@ -69,36 +43,13 @@ function updateFrontmatterAndAppend(
   const frontmatter = match[1]
   const body = existingContent.slice(match[0].length)
 
-  const existingCount = Number(getFrontmatterValue(frontmatter, 'message_count') ?? 0)
-  const existingMinDate = getFrontmatterValue(frontmatter, 'min_date')
-  const existingMaxDate = getFrontmatterValue(frontmatter, 'max_date')
-
-  const minDate = existingMinDate
-    ? new Date(existingMinDate) < new Date(newMinDate) ? existingMinDate : newMinDate
-    : newMinDate
-  const maxDate = existingMaxDate
-    ? new Date(existingMaxDate) > new Date(newMaxDate) ? existingMaxDate : newMaxDate
-    : newMaxDate
-
-  const upsertField = (source: string, key: string, value: string): string => {
-    const regex = new RegExp(`^${key}:\\s*.+$`, 'm')
-    if (regex.test(source)) {
-      return source.replace(regex, `${key}: ${value}`)
-    }
-    return `${source}\n${key}: ${value}`
-  }
-
-  // Update last_message_id, message_count, dates, and exported_at
-  let updatedFrontmatter = frontmatter
-  updatedFrontmatter = upsertField(updatedFrontmatter, 'last_message_id', String(newLastMsgId))
-  updatedFrontmatter = upsertField(
-    updatedFrontmatter,
-    'message_count',
-    String(existingCount + newMessageCount)
-  )
-  updatedFrontmatter = upsertField(updatedFrontmatter, 'min_date', `"${minDate}"`)
-  updatedFrontmatter = upsertField(updatedFrontmatter, 'max_date', `"${maxDate}"`)
-  updatedFrontmatter = upsertField(updatedFrontmatter, 'exported_at', `"${new Date().toISOString()}"`)
+  const updatedFrontmatter = updateFrontmatter({
+    frontmatter,
+    newLastMsgId,
+    newMessageCount,
+    newMinDate,
+    newMaxDate
+  })
 
   return `---\n${updatedFrontmatter}\n---\n${body}${newMessages}`
 }
@@ -123,24 +74,17 @@ export function appendToChatFile(
     return { messagesAppended: 0, fileCreated: false }
   }
 
-  // Sanitize chat name for filesystem
-  const safeFilename = sanitizeFilename(chatName, chatId)
-
-  // Build file path
-  const filePath = join('data', 'archive', `${safeFilename}.md`)
+  const filePath = getArchivePath(chatName, chatId)
 
   // Create file if it doesn't exist to avoid data loss
   if (!existsSync(filePath)) {
     const orderedMessages = sortMessagesChronological(messages)
-    const dirPath = join('data', 'archive')
-    mkdirSync(dirPath, { recursive: true })
-
     const firstMsgId = orderedMessages[0].id
     const lastMsgId = orderedMessages[orderedMessages.length - 1].id
     const minDate = orderedMessages[0].date.toISOString()
     const maxDate = orderedMessages[orderedMessages.length - 1].date.toISOString()
 
-    let content = createFrontmatter(
+    let content = buildFrontmatter(
       chatName,
       chatId,
       firstMsgId,

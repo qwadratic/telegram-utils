@@ -1,6 +1,7 @@
 import type { TelegramClient, Message } from '@mtcute/node'
-import { spinner, log } from '@clack/prompts'
+import { spinner } from '@clack/prompts'
 import type { Config } from '../config/index.js'
+import { getChatName } from '../utils/chat-name.js'
 import { loadState, saveState, updateChatState } from './state.js'
 import { appendToChatFile } from './append.js'
 import { fetchMessages } from '../messages/fetch.js'
@@ -19,19 +20,90 @@ export interface SyncResult {
   durationMs: number
 }
 
-/**
- * Get display name for a chat.
- *
- * @param tg - Telegram client
- * @param chatId - Chat ID to look up
- * @returns Chat name or fallback to string ID
- */
-async function getChatName(tg: TelegramClient, chatId: number): Promise<string> {
-  try {
-    const peer = await tg.getPeer(chatId)
-    return peer.displayName || String(chatId)
-  } catch {
-    return String(chatId)
+async function fetchNewMessages(
+  tg: TelegramClient,
+  chatId: number,
+  lastMsgId: number | undefined,
+  onProgress: (count: number) => void
+): Promise<Message[]> {
+  const messages: Message[] = []
+  for await (const msg of fetchMessages(tg, chatId, {
+    minId: lastMsgId,
+    onProgress
+  })) {
+    messages.push(msg)
+  }
+  return messages
+}
+
+async function appendOrWriteChat(options: {
+  chatName: string
+  chatId: number
+  messages: Message[]
+  isFirstSync: boolean
+  lastMsgId: number | undefined
+}): Promise<{ messagesAppended: number; filesUpdated: number; skipped: boolean; newestMsgId: number }> {
+  if (options.messages.length === 0) {
+    if (options.isFirstSync || !options.lastMsgId) {
+      const { filesWritten } = await writeChatFile(options.chatName, options.chatId, options.messages)
+      return { messagesAppended: 0, filesUpdated: filesWritten, skipped: false, newestMsgId: 0 }
+    }
+    return { messagesAppended: 0, filesUpdated: 0, skipped: true, newestMsgId: options.lastMsgId ?? 0 }
+  }
+
+  if (options.isFirstSync || !options.lastMsgId) {
+    // Full export for new chats
+    const { messagesWritten, filesWritten } = await writeChatFile(options.chatName, options.chatId, options.messages)
+    return {
+      messagesAppended: messagesWritten,
+      filesUpdated: filesWritten,
+      skipped: false,
+      newestMsgId: options.messages[0].id
+    }
+  }
+
+  // Incremental: append all new messages to existing chat file
+  const result = appendToChatFile(options.chatName, options.chatId, options.messages)
+  return {
+    messagesAppended: result.messagesAppended,
+    filesUpdated: result.messagesAppended > 0 ? 1 : 0,
+    skipped: false,
+    newestMsgId: options.messages[0].id
+  }
+}
+
+function updateStateForChat(
+  state: ReturnType<typeof loadState>,
+  chatId: number,
+  newestMsgId: number,
+  chatName: string
+) {
+  updateChatState(state, chatId, newestMsgId, chatName)
+}
+
+function printSyncSummary(skippedChats: string[], newChatLabels: string[]) {
+  if (skippedChats.length > 0) {
+    const preview = skippedChats.slice(0, 3)
+    const remaining = skippedChats.length - preview.length
+    console.log('Skipped chats:')
+    for (const chatLabel of preview) {
+      console.log(chatLabel)
+    }
+    if (remaining > 0) {
+      console.log(`... and ${remaining} more\n`)
+    }
+  }
+
+  if (newChatLabels.length > 0) {
+    const preview = newChatLabels.slice(0, 3)
+    const remaining = newChatLabels.length - preview.length
+    console.log('New chats added:')
+    for (const chatLabel of preview) {
+      console.log(chatLabel)
+    }
+    if (remaining > 0) {
+      console.log(`... and ${remaining} more`)
+    }
   }
 }
 
@@ -71,15 +143,8 @@ export async function syncChats(
   let filesUpdated = 0
   let chatsProcessed = 0
   let chatsSkipped = 0
-  let currentSpinnerMessage = 'Starting sync...'
   const skippedChats: string[] = []
   const newChatLabels: string[] = []
-
-  const logWithSpinner = (message: string) => {
-    s.stop()
-    log.info(message)
-    s.start(currentSpinnerMessage)
-  }
 
   // Deduplicate chat IDs
   const uniqueChatIds = [...new Set(chatsToSync)]
@@ -92,77 +157,42 @@ export async function syncChats(
       newChatLabels.push(`${chatName} (${chatId})`)
     }
 
-    currentSpinnerMessage = `Syncing ${chatName}...`
-    s.message(currentSpinnerMessage)
+    s.message(`Syncing ${chatName}...`)
 
-    // Fetch messages (with minId if we have prior state)
-    const messages: Message[] = []
-    for await (const msg of fetchMessages(tg, chatId, {
-      minId: lastMsgId,
-      onProgress: (count) => s.message(`${chatName}: fetched ${count} messages...`)
-    })) {
-      messages.push(msg)
-    }
+    const messages = await fetchNewMessages(tg, chatId, lastMsgId, (count) => {
+      s.message(`${chatName}: fetched ${count} messages...`)
+    })
 
-    if (messages.length === 0) {
-      if (isFirstSync || !lastMsgId) {
-        const { filesWritten } = await writeChatFile(chatName, chatId, messages)
-        filesUpdated += filesWritten
-        updateChatState(state, chatId, 0, chatName)
-      } else {
-        skippedChats.push(`${chatName} (${chatId})`)
-        chatsSkipped++
-      }
+    const { messagesAppended: appendedCount, filesUpdated: updatedCount, skipped, newestMsgId } =
+      await appendOrWriteChat({
+        chatName,
+        chatId,
+        messages,
+        isFirstSync,
+        lastMsgId
+      })
+
+    if (skipped) {
+      skippedChats.push(`${chatName} (${chatId})`)
+      chatsSkipped++
       continue
     }
 
-    chatsProcessed++
-
-    if (isFirstSync || !lastMsgId) {
-      // Full export for new chats
-      const { messagesWritten, filesWritten } = await writeChatFile(chatName, chatId, messages)
-      messagesAppended += messagesWritten
-      filesUpdated += filesWritten
-    } else {
-      // Incremental: append all new messages to existing chat file
-      const result = appendToChatFile(chatName, chatId, messages)
-      messagesAppended += result.messagesAppended
-      if (result.messagesAppended > 0) filesUpdated++
+    if (messages.length > 0) {
+      chatsProcessed++
     }
 
-    // Update state for this chat
-    // messages are newest-first from API
-    const newestMsgId = messages[0].id
-    updateChatState(state, chatId, newestMsgId, chatName)
+    messagesAppended += appendedCount
+    filesUpdated += updatedCount
+
+    updateStateForChat(state, chatId, newestMsgId, chatName)
   }
 
   saveState(state)
 
   s.stop('Sync complete')
 
-  if (skippedChats.length > 0) {
-    const preview = skippedChats.slice(0, 3)
-    const remaining = skippedChats.length - preview.length
-    console.log('Skipped chats:')
-    for (const chatLabel of preview) {
-      console.log(chatLabel)
-    }
-    if (remaining > 0) {
-      console.log(`... and ${remaining} more\n`)
-    }
-  }
-
-  if (newChatLabels.length > 0) {
-    const preview = newChatLabels.slice(0, 3)
-    const remaining = newChatLabels.length - preview.length
-    console.log('New chats added:')
-    for (const chatLabel of preview) {
-      console.log(chatLabel)
-    }
-    if (remaining > 0) {
-      console.log(`... and ${remaining} more`)
-    }
-  }
+  printSyncSummary(skippedChats, newChatLabels)
 
   return {
     chatsProcessed,

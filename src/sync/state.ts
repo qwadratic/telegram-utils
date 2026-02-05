@@ -12,6 +12,13 @@ export interface SyncState {
     lastSyncedAt: string  // ISO timestamp
     chatName: string      // Cached for display
   }>
+  recency: Record<'recent' | 'historical', {
+    cutoff: string | null
+    chats: Record<number, {
+      lastMessageId: number
+      lastExportedAt: string
+    }>
+  }>
   folders: Record<number, {
     chatIds: number[]     // Snapshot at last sync
     lastSyncedAt: string
@@ -29,11 +36,26 @@ export const STATE_PATH = 'data/archive/sync-state.json'
  */
 export function loadState(): SyncState {
   if (!existsSync(STATE_PATH)) {
-    return { version: 1, chats: {}, folders: {} }
+    return {
+      version: 1,
+      chats: {},
+      recency: {
+        recent: { cutoff: null, chats: {} },
+        historical: { cutoff: null, chats: {} }
+      },
+      folders: {}
+    }
   }
 
   const content = readFileSync(STATE_PATH, 'utf-8')
-  return JSON.parse(content) as SyncState
+  const parsed = JSON.parse(content) as SyncState
+  if (!parsed.recency) {
+    parsed.recency = {
+      recent: { cutoff: null, chats: {} },
+      historical: { cutoff: null, chats: {} }
+    }
+  }
+  return parsed
 }
 
 /**

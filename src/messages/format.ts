@@ -1,5 +1,4 @@
 import type { Message, User, Chat, PeerSender } from '@mtcute/node'
-import { md } from '@mtcute/markdown-parser'
 
 /**
  * Format a sender for display in Markdown.

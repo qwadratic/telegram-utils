@@ -1,8 +1,14 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { TelegramClient, Message } from '@mtcute/node'
 import { spinner } from '@clack/prompts'
 import type { Config } from '../config/index.js'
+import { getChatName } from '../utils/chat-name.js'
+import { loadState, saveState } from '../sync/state.js'
 import { fetchMessages } from './fetch.js'
 import { formatMessage } from './format.js'
+import { buildRecencyFrontmatter } from './frontmatter.js'
+import { sortMessagesChronological } from './sort.js'
 import { writeCombinedArchiveFile } from './writer.js'
 
 export interface RecencyExportResult {
@@ -15,55 +21,136 @@ export interface RecencyExportResult {
 
 type RecencyMode = 'recent' | 'historical'
 
-function sortMessagesChronological(messages: Message[]): Message[] {
-  return [...messages].sort((a, b) => {
-    const timeDiff = a.date.getTime() - b.date.getTime()
-    if (timeDiff !== 0) return timeDiff
-    return a.id - b.id
+type MessageBlock = {
+  text: string
+  timestamp: Date | null
+}
+
+type ParsedSection = {
+  header: string
+  blocks: MessageBlock[]
+}
+
+function parseTimestamp(value: string): Date | null {
+  const iso = value.replace(' UTC', 'Z').replace(' ', 'T')
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date
+}
+
+function splitFrontmatter(content: string): { frontmatter: string | null; body: string } {
+  const match = content.match(/^---\n[\s\S]*?\n---\n\n/)
+  if (!match) return { frontmatter: null, body: content }
+  return { frontmatter: match[0], body: content.slice(match[0].length) }
+}
+
+function parseCombinedSections(body: string): Map<number, ParsedSection> {
+  const sections = new Map<number, ParsedSection>()
+  if (body.trim() === 'No messages.') {
+    return sections
+  }
+
+  const lines = body.split('\n')
+  let currentChatId: number | null = null
+  let currentHeader = ''
+  let currentBlocks: MessageBlock[] = []
+  let currentBlockLines: string[] | null = null
+  let currentBlockDate: Date | null = null
+
+  const flushBlock = () => {
+    if (!currentBlockLines || !currentChatId) return
+    const text = `${currentBlockLines.join('\n')}\n`
+    currentBlocks.push({ text, timestamp: currentBlockDate })
+    currentBlockLines = null
+    currentBlockDate = null
+  }
+
+  const flushSection = () => {
+    if (currentChatId == null) return
+    sections.set(currentChatId, { header: currentHeader, blocks: currentBlocks })
+    currentChatId = null
+    currentHeader = ''
+    currentBlocks = []
+  }
+
+  for (const line of lines) {
+    if (line.startsWith('## Chat: ')) {
+      flushBlock()
+      flushSection()
+      const idMatch = line.match(/\((\-?\d+)\)\s*$/)
+      if (!idMatch) continue
+      currentChatId = Number(idMatch[1])
+      currentHeader = line
+      continue
+    }
+
+    const headerMatch = line.match(/^\*\*\[(.+?)\]\*\*/)
+    if (headerMatch) {
+      flushBlock()
+      currentBlockLines = [line]
+      currentBlockDate = parseTimestamp(headerMatch[1])
+      continue
+    }
+
+    if (currentBlockLines) {
+      currentBlockLines.push(line)
+    }
+  }
+
+  flushBlock()
+  flushSection()
+  return sections
+}
+
+function filterBlocksByCutoff(
+  blocks: MessageBlock[],
+  cutoffDate: Date | null,
+  mode: RecencyMode
+): MessageBlock[] {
+  return blocks.filter((block) => {
+    if (!cutoffDate) return true
+    if (!block.timestamp) return true
+    return mode === 'recent'
+      ? block.timestamp >= cutoffDate
+      : block.timestamp < cutoffDate
   })
 }
 
-async function getChatName(tg: TelegramClient, chatId: number): Promise<string> {
-  try {
-    const peer = await tg.getPeer(chatId)
-    return peer.displayName || String(chatId)
-  } catch {
-    return String(chatId)
-  }
+function buildSectionBody(blocks: MessageBlock[]): string {
+  return blocks.map(block => block.text).join('')
 }
 
-function createRecencyFrontmatter(params: {
-  mode: RecencyMode
-  cutoff: string
-  chatsWithMessages: number
-  messagesExported: number
-  minDate: string | null
-  maxDate: string | null
-}): string {
-  const now = new Date().toISOString()
-  const minDateValue = params.minDate ?? 'null'
-  const maxDateValue = params.maxDate ?? 'null'
-  return `---
-export_kind: "${params.mode}"
-cutoff_date: "${params.cutoff}"
-chats_with_messages: ${params.chatsWithMessages}
-message_count: ${params.messagesExported}
-min_date: ${minDateValue === 'null' ? 'null' : `"${minDateValue}"`}
-max_date: ${maxDateValue === 'null' ? 'null' : `"${maxDateValue}"`}
-exported_at: "${now}"
----
-
-`
+function compareCutoffForward(previous: string, next: string): boolean {
+  const prevDate = new Date(`${previous}T00:00:00Z`)
+  const nextDate = new Date(`${next}T00:00:00Z`)
+  return nextDate.getTime() >= prevDate.getTime()
 }
 
 export async function exportRecencyChats(
   tg: TelegramClient,
   config: Config,
-  cutoffDate: Date,
+  cutoffDate: Date | null,
   mode: RecencyMode,
-  cutoffLabel: string
+  cutoffLabel: string | null
 ): Promise<RecencyExportResult> {
   const startTime = Date.now()
+  const state = loadState()
+  const recencyState = state.recency[mode]
+  const previousCutoff = recencyState.cutoff
+  if (mode === 'recent') {
+    if (!cutoffDate || !cutoffLabel) {
+      throw new Error('Cutoff is required for recent exports.')
+    }
+  }
+
+  let shouldUseIncremental =
+    previousCutoff != null &&
+    cutoffLabel != null &&
+    compareCutoffForward(previousCutoff, cutoffLabel)
+  if (cutoffLabel && previousCutoff && !shouldUseIncremental) {
+    throw new Error(`Cutoff must not move earlier than ${previousCutoff}.`)
+  }
+
   const chatIdArray = [...new Set(config.trackedChatIds)]
   const totalChats = chatIdArray.length
 
@@ -78,6 +165,24 @@ export async function exportRecencyChats(
 
   const sections: string[] = []
   const isRecent = mode === 'recent'
+  const outputFilePath = join('data', 'archive', `${mode}.md`)
+  const parsedSections = new Map<number, ParsedSection>()
+  const hasExistingFile = existsSync(outputFilePath)
+  if (shouldUseIncremental && hasExistingFile) {
+    const existing = readFileSync(outputFilePath, 'utf-8')
+    const { body } = splitFrontmatter(existing)
+    const existingSections = parseCombinedSections(body)
+    for (const [chatId, section] of existingSections) {
+      const filteredBlocks = isRecent
+        ? filterBlocksByCutoff(section.blocks, cutoffDate, mode)
+        : section.blocks
+      parsedSections.set(chatId, { header: section.header, blocks: filteredBlocks })
+    }
+  } else if (shouldUseIncremental && !hasExistingFile) {
+    shouldUseIncremental = false
+  }
+
+  const nextRecencyChats: typeof recencyState.chats = {}
 
   for (let i = 0; i < chatIdArray.length; i++) {
     const chatId = chatIdArray[i]
@@ -86,42 +191,86 @@ export async function exportRecencyChats(
 
     const chatName = await getChatName(tg, chatId)
     const messages: Message[] = []
+    let latestFetchedId: number | null = null
+
+    const minId = shouldUseIncremental
+      ? recencyState.chats[chatId]?.lastMessageId
+      : undefined
 
     for await (const msg of fetchMessages(tg, chatId, {
+      minId,
       onProgress: (count) => {
         s.message(`Chat ${chatIndex}: fetched ${count} messages...`)
       }
     })) {
-      const isMatch = isRecent
-        ? msg.date >= cutoffDate
-        : msg.date < cutoffDate
+      if (latestFetchedId == null) {
+        latestFetchedId = msg.id
+      }
+      const isMatch = !cutoffDate
+        ? true
+        : isRecent
+          ? msg.date >= cutoffDate
+          : msg.date < cutoffDate
       if (isMatch) {
         messages.push(msg)
       }
     }
 
     chatsProcessed++
-    if (messages.length === 0) {
-      continue
+    const existingSection = parsedSections.get(chatId)
+    const orderedMessages = messages.length > 0
+      ? sortMessagesChronological(messages)
+      : []
+    const newBlocks = orderedMessages.map((msg) => ({
+      text: formatMessage(msg),
+      timestamp: msg.date
+    }))
+
+    const mergedBlocks = [
+      ...(existingSection?.blocks ?? []),
+      ...newBlocks
+    ]
+
+    if (mergedBlocks.length > 0) {
+      chatsWithMessages++
+      const header = existingSection?.header ?? `## Chat: ${chatName} (${chatId})`
+      const sectionBody = buildSectionBody(mergedBlocks)
+      sections.push(`${header}\n\n${sectionBody}`)
+
+      messagesExported += mergedBlocks.length
+      const blockDates = mergedBlocks
+        .map(block => block.timestamp)
+        .filter((date): date is Date => date != null)
+        .map(date => date.toISOString())
+      if (blockDates.length > 0) {
+        const chatMinDate = blockDates[0]
+        const chatMaxDate = blockDates[blockDates.length - 1]
+        if (!minDate || chatMinDate < minDate) minDate = chatMinDate
+        if (!maxDate || chatMaxDate > maxDate) maxDate = chatMaxDate
+      }
     }
 
-    chatsWithMessages++
-    const orderedMessages = sortMessagesChronological(messages)
-    const chatHeader = `## Chat: ${chatName} (${chatId})\n\n`
-    let section = chatHeader
-    for (const msg of orderedMessages) {
-      section += formatMessage(msg)
+    const now = new Date().toISOString()
+    if (mode === 'recent') {
+      const lastMessageId = latestFetchedId ?? recencyState.chats[chatId]?.lastMessageId
+      if (lastMessageId != null && lastMessageId > 0) {
+        nextRecencyChats[chatId] = { lastMessageId, lastExportedAt: now }
+      }
+    } else {
+      const newestIncludedId = orderedMessages.length > 0
+        ? orderedMessages[orderedMessages.length - 1].id
+        : recencyState.chats[chatId]?.lastMessageId
+      if (newestIncludedId != null && newestIncludedId > 0) {
+        nextRecencyChats[chatId] = { lastMessageId: newestIncludedId, lastExportedAt: now }
+      }
     }
-    sections.push(section)
-
-    messagesExported += orderedMessages.length
-    const chatMinDate = orderedMessages[0].date.toISOString()
-    const chatMaxDate = orderedMessages[orderedMessages.length - 1].date.toISOString()
-    if (!minDate || chatMinDate < minDate) minDate = chatMinDate
-    if (!maxDate || chatMaxDate > maxDate) maxDate = chatMaxDate
   }
 
-  const frontmatter = createRecencyFrontmatter({
+  recencyState.chats = nextRecencyChats
+  recencyState.cutoff = cutoffLabel
+  saveState(state)
+
+  const frontmatter = buildRecencyFrontmatter({
     mode,
     cutoff: cutoffLabel,
     chatsWithMessages,

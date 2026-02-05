@@ -97,6 +97,32 @@ test('exportRecencyChats writes historical archive with cutoff', async () => {
   })
 })
 
+test('exportRecencyChats allows historical export without cutoff', async () => {
+  await withTempDir(async () => {
+    const client = makeMockClient({
+      1: [
+        makeMessage({ id: 1, date: new Date(Date.UTC(2025, 0, 1, 0, 0, 0)) }),
+        makeMessage({ id: 2, date: new Date(Date.UTC(2025, 0, 3, 0, 0, 0)) }),
+      ]
+    })
+
+    const result = await exportRecencyChats(
+      client,
+      { trackedFolderIds: [1], trackedChatIds: [1] },
+      null,
+      'historical',
+      null
+    )
+
+    const content = readFileSync(result.outputPath, 'utf-8')
+    assert.ok(content.includes('export_kind: "historical"'))
+    assert.ok(content.includes('cutoff_date: null'))
+    assert.ok(content.includes('Chat 1 (1)'))
+    assert.ok(content.includes('[2025-01-01 00:00:00 UTC]'))
+    assert.ok(content.includes('[2025-01-03 00:00:00 UTC]'))
+  })
+})
+
 test('loadConfig reads tracked ids', async () => {
   await withTempDir(async () => {
     const configDir = join('data')

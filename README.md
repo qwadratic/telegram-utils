@@ -25,6 +25,10 @@ TypeScript CLI tool that exports Telegram chats from selected folders into a sea
 
 ## Commands (MVP)
 
-- `symbiotic-chats export sync` - sync chats into per-chat archives
-- `symbiotic-chats export recent --cutoff YYYY-MM-DD` - combined recent export
-- `symbiotic-chats export historical --cutoff YYYY-MM-DD` - combined historical export
+- `symbiotic-chats export chats` - export chats into per-chat archives
+- `symbiotic-chats export recent --cutoff YYYY-MM-DD` - combined recent export (cutoff required)
+- `symbiotic-chats export historical [--cutoff YYYY-MM-DD]` - combined historical export (cutoff optional)
+
+Notes:
+- Recency exports are incremental and rely on `data/archive/sync-state.json` for per-chat watermarks.
+- Cutoff dates must not move earlier than a previous run for the same mode.
