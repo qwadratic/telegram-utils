@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-03)
+See: .planning/PROJECT.md (updated 2026-02-04)
 
 **Core value:** Reliably export and incrementally sync Telegram chats to searchable Markdown without risking account bans or data loss.
-**Current focus:** Phase 4 - Incremental Sync - COMPLETE (including gap closure)
+**Current focus:** Phase 5 - Perplexity-Friendly Export (planned)
 
 ## Current Position
 
 Phase: 4 of 4 (Incremental Sync) - COMPLETE
 Plan: 4 of 4 in current phase (including gap closure) - COMPLETE
-Status: All phases complete - MVP ready with gap closure fixes
-Last activity: 2026-02-03 - Updated setup/config refresh and middleware behavior
+Status: MVP complete; roadmap extended with new phases
+Last activity: 2026-02-04 - Planning audit: documented utility exports and CLI diagnostics
 
 Progress: [██████████] 100%
 
@@ -62,7 +62,7 @@ Recent decisions affecting current work:
 - [03-01]: 200 char filename limit leaves room for path and .md extension
 - [03-02]: PeerSender imported from @mtcute/node (re-exports from @mtcute/core)
 - [03-02]: Reply quotes replace newlines with spaces for clean blockquote rendering
-- [03-02]: Messages reversed per-month-group for memory efficiency
+- [03-02]: Messages written in a single archive file per chat
 - [03-03]: getPeer used instead of getChat - returns User | Chat union, both have displayName
 - [03-03]: Duration formatted as "Xm Ys" or just "Ys" if under a minute
 - [04-01]: SyncState tracks lastMessageId, lastSyncedAt, chatName per chat
@@ -72,18 +72,21 @@ Recent decisions affecting current work:
 - [04-02]: Skip non-existent files during append - no historical file creation
 - [04-02]: New folders handled as special case - all chats marked new
 - [04-03]: First sync detection based on empty state.chats (not config)
-- [04-03]: New messages appended across all returned months since lastMessageId
+- [04-03]: New messages appended to the existing archive file since lastMessageId
 - [04-03]: Deduplicate chat IDs before sync to avoid processing same chat twice
 - [04-04]: Optional currentSelection parameter to selectFolders for backward compatibility
 - [Update]: Rename folders command to setup for export selection
 - [Update]: Config now stores trackedFolderIds + trackedChatIds (no folder->chat map)
 - [Update]: Export refreshes tracked chats from selected folders before sync
 - [Update]: disableUpdates enabled; RPC errors logged via middleware
-- [Update]: Archives stored under data/archive
+- [Update]: Archives stored under data/archive (single file per chat)
+- [Update]: Frontmatter includes message_count, min_date, max_date
+- [Update]: Recency exports write combined archive files (recent/historical)
+- [Update]: Contact import CLI outputs CSV for phone checks
 
 ### Pending Todos
 
-None - MVP complete.
+None - MVP complete. Preparations for prod are in Phase 5 in roadmap
 
 ### Blockers/Concerns
 
@@ -91,14 +94,10 @@ None - MVP complete.
 - Deleted messages: Detection requires re-fetching entire history
 - Edited messages: Original version not available without prior storage
 
-## Quick Tasks
 
-| Task | Name | Status | Completed |
-|------|------|--------|-----------|
-| 001 | Contact Import CSV | Complete | 2026-02-03 |
 
 ## Session Continuity
 
 Last session: 2026-02-03T21:20:00Z
-Stopped at: Updated planning artifacts for archive path and month-wide appends
+Stopped at: switched to other agent, keeping context
 Resume file: None

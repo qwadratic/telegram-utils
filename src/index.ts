@@ -171,8 +171,13 @@ program
 const exportCommand = program
   .command('export')
   .description('Export chats from tracked folders')
+  .action(() => {
+    exportCommand.help()
+  })
 
 exportCommand
+  .command('sync')
+  .description('Sync chats into per-chat archive files')
   .action(async () => {
     try {
       intro(chalk.cyan('Export Chats'))
