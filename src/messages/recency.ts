@@ -120,6 +120,69 @@ function buildSectionBody(blocks: MessageBlock[]): string {
   return blocks.map(block => block.text).join('')
 }
 
+function getFrontmatterValue(frontmatter: string, key: string): string | null {
+  const regex = new RegExp(`^${key}:\\s*(.+)$`, 'm')
+  const match = frontmatter.match(regex)
+  if (!match) return null
+  const rawValue = match[1].trim()
+  if (rawValue === 'null') return null
+  if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
+    return rawValue.slice(1, -1).replace(/\\"/g, '"')
+  }
+  return rawValue
+}
+
+function parseRecencyFrontmatter(frontmatter: string | null): {
+  messageCount: number
+  chatsWithMessages: number
+  minDate: string | null
+  maxDate: string | null
+} {
+  if (!frontmatter) {
+    return { messageCount: 0, chatsWithMessages: 0, minDate: null, maxDate: null }
+  }
+  const messageCount = Number(getFrontmatterValue(frontmatter, 'message_count') ?? 0)
+  const chatsWithMessages = Number(getFrontmatterValue(frontmatter, 'chats_with_messages') ?? 0)
+  const minDate = getFrontmatterValue(frontmatter, 'min_date')
+  const maxDate = getFrontmatterValue(frontmatter, 'max_date')
+  return { messageCount, chatsWithMessages, minDate, maxDate }
+}
+
+function extractChatIds(body: string): Set<number> {
+  const ids = new Set<number>()
+  const regex = /^## Chat: .*?\((\-?\d+)\)\s*$/gm
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(body)) !== null) {
+    ids.add(Number(match[1]))
+  }
+  return ids
+}
+
+function appendMessagesToBody(
+  body: string,
+  chatId: number,
+  header: string,
+  newBody: string
+): { body: string; isNewSection: boolean } {
+  const headerRegex = new RegExp(`^## Chat: .*?\\(${chatId}\\)\\s*$`, 'm')
+  const match = headerRegex.exec(body)
+  if (!match) {
+    const trimmed = body.trim()
+    const prefix = trimmed ? `${trimmed}\n\n` : ''
+    return { body: `${prefix}${header}\n\n${newBody}`.trimEnd() + '\n', isNewSection: true }
+  }
+
+  const startIndex = match.index
+  const afterHeader = startIndex + match[0].length
+  const nextHeaderRegex = /^## Chat: /gm
+  nextHeaderRegex.lastIndex = afterHeader
+  const nextMatch = nextHeaderRegex.exec(body)
+  const insertIndex = nextMatch ? nextMatch.index : body.length
+  const insertion = `${body[insertIndex - 1] === '\n' ? '' : '\n'}${newBody}`
+  const updatedBody = body.slice(0, insertIndex) + insertion + body.slice(insertIndex)
+  return { body: updatedBody, isNewSection: false }
+}
+
 function compareCutoffForward(previous: string, next: string): boolean {
   const prevDate = new Date(`${previous}T00:00:00Z`)
   const nextDate = new Date(`${next}T00:00:00Z`)
@@ -168,7 +231,24 @@ export async function exportRecencyChats(
   const outputFilePath = join('data', 'archive', `${mode}.md`)
   const parsedSections = new Map<number, ParsedSection>()
   const hasExistingFile = existsSync(outputFilePath)
-  if (shouldUseIncremental && hasExistingFile) {
+  const appendMode =
+    isRecent &&
+    shouldUseIncremental &&
+    hasExistingFile &&
+    cutoffLabel != null &&
+    previousCutoff === cutoffLabel
+  let existingFrontmatter: string | null = null
+  let existingBody = ''
+  let existingChatIds = new Set<number>()
+  let existingCounts = { messageCount: 0, chatsWithMessages: 0, minDate: null as string | null, maxDate: null as string | null }
+  if (appendMode) {
+    const existing = readFileSync(outputFilePath, 'utf-8')
+    const { frontmatter, body } = splitFrontmatter(existing)
+    existingFrontmatter = frontmatter
+    existingBody = body.trim() === 'No messages.' ? '' : body
+    existingChatIds = extractChatIds(existingBody)
+    existingCounts = parseRecencyFrontmatter(frontmatter)
+  } else if (shouldUseIncremental && hasExistingFile) {
     const existing = readFileSync(outputFilePath, 'utf-8')
     const { body } = splitFrontmatter(existing)
     const existingSections = parseCombinedSections(body)
@@ -217,7 +297,6 @@ export async function exportRecencyChats(
     }
 
     chatsProcessed++
-    const existingSection = parsedSections.get(chatId)
     const orderedMessages = messages.length > 0
       ? sortMessagesChronological(messages)
       : []
@@ -226,27 +305,55 @@ export async function exportRecencyChats(
       timestamp: msg.date
     }))
 
-    const mergedBlocks = [
-      ...(existingSection?.blocks ?? []),
-      ...newBlocks
-    ]
+    if (appendMode && newBlocks.length > 0) {
+      const header = `## Chat: ${chatName} (${chatId})`
+      const sectionBody = buildSectionBody(newBlocks)
+      const result = appendMessagesToBody(existingBody, chatId, header, sectionBody)
+      existingBody = result.body
+      if (result.isNewSection) {
+        existingChatIds.add(chatId)
+        existingCounts.chatsWithMessages += 1
+      }
 
-    if (mergedBlocks.length > 0) {
-      chatsWithMessages++
-      const header = existingSection?.header ?? `## Chat: ${chatName} (${chatId})`
-      const sectionBody = buildSectionBody(mergedBlocks)
-      sections.push(`${header}\n\n${sectionBody}`)
-
-      messagesExported += mergedBlocks.length
-      const blockDates = mergedBlocks
+      existingCounts.messageCount += newBlocks.length
+      const blockDates = newBlocks
         .map(block => block.timestamp)
         .filter((date): date is Date => date != null)
         .map(date => date.toISOString())
       if (blockDates.length > 0) {
         const chatMinDate = blockDates[0]
         const chatMaxDate = blockDates[blockDates.length - 1]
-        if (!minDate || chatMinDate < minDate) minDate = chatMinDate
-        if (!maxDate || chatMaxDate > maxDate) maxDate = chatMaxDate
+        if (!existingCounts.minDate || chatMinDate < existingCounts.minDate) {
+          existingCounts.minDate = chatMinDate
+        }
+        if (!existingCounts.maxDate || chatMaxDate > existingCounts.maxDate) {
+          existingCounts.maxDate = chatMaxDate
+        }
+      }
+    } else if (!appendMode) {
+      const existingSection = parsedSections.get(chatId)
+      const mergedBlocks = [
+        ...(existingSection?.blocks ?? []),
+        ...newBlocks
+      ]
+
+      if (mergedBlocks.length > 0) {
+        chatsWithMessages++
+        const header = existingSection?.header ?? `## Chat: ${chatName} (${chatId})`
+        const sectionBody = buildSectionBody(mergedBlocks)
+        sections.push(`${header}\n\n${sectionBody}`)
+
+        messagesExported += mergedBlocks.length
+        const blockDates = mergedBlocks
+          .map(block => block.timestamp)
+          .filter((date): date is Date => date != null)
+          .map(date => date.toISOString())
+        if (blockDates.length > 0) {
+          const chatMinDate = blockDates[0]
+          const chatMaxDate = blockDates[blockDates.length - 1]
+          if (!minDate || chatMinDate < minDate) minDate = chatMinDate
+          if (!maxDate || chatMaxDate > maxDate) maxDate = chatMaxDate
+        }
       }
     }
 
@@ -255,6 +362,7 @@ export async function exportRecencyChats(
       const lastMessageId = latestFetchedId ?? recencyState.chats[chatId]?.lastMessageId
       if (lastMessageId != null && lastMessageId > 0) {
         nextRecencyChats[chatId] = { lastMessageId, lastExportedAt: now }
+        recencyState.chats[chatId] = { lastMessageId, lastExportedAt: now }
       }
     } else {
       const newestIncludedId = orderedMessages.length > 0
@@ -262,13 +370,23 @@ export async function exportRecencyChats(
         : recencyState.chats[chatId]?.lastMessageId
       if (newestIncludedId != null && newestIncludedId > 0) {
         nextRecencyChats[chatId] = { lastMessageId: newestIncludedId, lastExportedAt: now }
+        recencyState.chats[chatId] = { lastMessageId: newestIncludedId, lastExportedAt: now }
       }
     }
+
+    saveState(state)
   }
 
   recencyState.chats = nextRecencyChats
   recencyState.cutoff = cutoffLabel
   saveState(state)
+
+  if (appendMode) {
+    messagesExported = existingCounts.messageCount
+    chatsWithMessages = existingCounts.chatsWithMessages
+    minDate = existingCounts.minDate
+    maxDate = existingCounts.maxDate
+  }
 
   const frontmatter = buildRecencyFrontmatter({
     mode,
@@ -279,7 +397,11 @@ export async function exportRecencyChats(
     maxDate
   })
 
-  const body = sections.length > 0 ? sections.join('\n') : 'No messages.\n'
+  const body = appendMode
+    ? (existingBody.trim() ? existingBody : 'No messages.\n')
+    : sections.length > 0
+      ? sections.join('\n')
+      : 'No messages.\n'
   const outputPath = writeCombinedArchiveFile(`${mode}.md`, `${frontmatter}${body}`)
 
   const durationMs = Date.now() - startTime

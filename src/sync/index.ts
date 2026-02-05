@@ -186,6 +186,7 @@ export async function syncChats(
     filesUpdated += updatedCount
 
     updateStateForChat(state, chatId, newestMsgId, chatName)
+    saveState(state)
   }
 
   saveState(state)

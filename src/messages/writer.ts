@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Message } from '@mtcute/node'
 import { ensureArchiveDir, getArchivePath } from '../utils/archive-path.js'
@@ -73,6 +73,8 @@ export function writeCombinedArchiveFile(
   content: string
 ): string {
   const filePath = join(ensureArchiveDir(), fileName)
-  writeFileSync(filePath, content, 'utf-8')
+  const tempPath = `${filePath}.tmp`
+  writeFileSync(tempPath, content, 'utf-8')
+  renameSync(tempPath, filePath)
   return filePath
 }
