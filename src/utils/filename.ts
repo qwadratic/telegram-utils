@@ -5,12 +5,6 @@
 const INVALID_CHARS = /[<>:"/\\|?*\x00-\x1f\x80-\x9f]/g
 
 /**
- * Windows reserved device names (case-insensitive).
- * These cannot be used as filenames on Windows.
- */
-const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
-
-/**
  * Maximum filename length (leave room for path and .md extension)
  */
 const MAX_LENGTH = 200
@@ -23,35 +17,34 @@ const MAX_LENGTH = 200
  * - Collapses multiple spaces to single space
  * - Trims whitespace
  * - Removes trailing dots (Windows issue)
- * - Prefixes Windows reserved names with underscore
  * - Truncates to 200 characters
- * - Falls back to chat-{fallbackId} or 'unnamed' if result is empty
+ * - Always appends _{chatId} to avoid collisions
  *
  * @param name - The string to sanitize
- * @param fallbackId - Optional chat ID to use if name becomes empty
+ * @param chatId - Chat ID to append as suffix
  * @returns A filesystem-safe filename
  */
-export function sanitizeFilename(name: string, fallbackId?: number): string {
+export function sanitizeFilename(name: string, chatId: number): string {
   let safe = name
     .replace(INVALID_CHARS, '') // Remove invalid chars
-    .replace(/\s+/g, ' ') // Collapse whitespace
+    .replace(/\s+/g, '-') // Collapse whitespace into dashes
     .trim()
+    .replace(/^-+|-+$/g, '') // Trim leading/trailing dashes
     .replace(/\.+$/, '') // Remove trailing dots (Windows)
+    .toLowerCase()
 
-  // Handle Windows reserved names
-  if (WINDOWS_RESERVED.test(safe)) {
-    safe = `_${safe}`
-  }
+  const suffix = `_${chatId}`
+  const maxBaseLength = Math.max(1, MAX_LENGTH - suffix.length)
 
-  // Truncate to max length
-  if (safe.length > MAX_LENGTH) {
-    safe = safe.slice(0, MAX_LENGTH)
+  // Truncate base to max length, preserving suffix
+  if (safe.length > maxBaseLength) {
+    safe = safe.slice(0, maxBaseLength)
   }
 
   // Fallback if empty
   if (!safe) {
-    return fallbackId !== undefined ? `chat-${fallbackId}` : 'unnamed'
+    safe = 'chat'
   }
 
-  return safe
+  return `${safe}${suffix}`
 }

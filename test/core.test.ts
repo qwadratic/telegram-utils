@@ -26,8 +26,9 @@ test('formatMessage includes forward and reply context', () => {
 })
 
 test('sanitizeFilename removes invalid chars and falls back', () => {
-  assert.equal(sanitizeFilename('A/B:C*D?'), 'ABCD')
-  assert.equal(sanitizeFilename('   ', 123), 'chat-123')
+  assert.equal(sanitizeFilename('A/B:C*D?', 1), 'abcd_1')
+  assert.equal(sanitizeFilename('   ', 123), 'chat_123')
+  assert.equal(sanitizeFilename('Hello  World', 2), 'hello-world_2')
 })
 
 test('parseCutoffDate validates YYYY-MM-DD', () => {

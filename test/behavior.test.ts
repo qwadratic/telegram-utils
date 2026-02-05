@@ -85,6 +85,10 @@ test('sync updates state and appends to existing archive', async () => {
           chatName: 'Chat 10'
         }
       },
+      recency: {
+        recent: { cutoff: null, chats: {} },
+        historical: { cutoff: null, chats: {} }
+      },
       folders: {}
     })
 
@@ -101,7 +105,7 @@ test('sync updates state and appends to existing archive', async () => {
       trackedChatIds: [10]
     })
 
-    const archiveContent = readFileSync(join('data', 'archive', 'Chat 10.md'), 'utf-8')
+    const archiveContent = readFileSync(join('data', 'archive', 'chat-10_10.md'), 'utf-8')
     assert.ok(archiveContent.includes('Initial'))
     assert.ok(archiveContent.includes('New'))
 

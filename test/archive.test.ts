@@ -27,11 +27,11 @@ test('archive behaviors with mock data', async () => {
     const appendResult = appendToChatFile('Mock Chat', chatId, messages)
     assert.equal(appendResult.fileCreated, true)
 
-    const archivePath = join('data', 'archive', 'Mock Chat.md')
+    const archivePath = join('data', 'archive', 'mock-chat_101.md')
     assert.ok(existsSync(archivePath))
 
     // frontmatter upsert on legacy file without message_count/min/max
-    const legacyPath = join('data', 'archive', 'Legacy Chat.md')
+    const legacyPath = join('data', 'archive', 'legacy-chat_202.md')
     mkdirSync(join('data', 'archive'), { recursive: true })
     writeFileSync(
       legacyPath,
@@ -62,7 +62,7 @@ Legacy body.\n`,
       trackedFolderIds: [1],
       trackedChatIds: [300]
     })
-    const emptyChatPath = join('data', 'archive', 'Chat 300.md')
+    const emptyChatPath = join('data', 'archive', 'chat-300_300.md')
     assert.ok(existsSync(emptyChatPath))
     const emptyContent = readFileSync(emptyChatPath, 'utf-8')
     assert.ok(emptyContent.includes('No messages.'))
@@ -77,7 +77,7 @@ Legacy body.\n`,
       trackedFolderIds: [1],
       trackedChatIds: [400]
     })
-    const filledChatPath = join('data', 'archive', 'Chat 400.md')
+    const filledChatPath = join('data', 'archive', 'chat-400_400.md')
     const filledContent = readFileSync(filledChatPath, 'utf-8')
     assert.ok(filledContent.includes('First'))
     assert.ok(filledContent.includes('Second'))
