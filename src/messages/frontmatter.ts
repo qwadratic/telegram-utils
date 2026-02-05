@@ -81,7 +81,7 @@ export function buildRecencyFrontmatter(params: {
   ])
 }
 
-function getFrontmatterValue(frontmatter: string, key: string): string | null {
+export function getFrontmatterValue(frontmatter: string, key: string): string | null {
   const regex = new RegExp(`^${key}:\\s*(.+)$`, 'm')
   const match = frontmatter.match(regex)
   if (!match) return null

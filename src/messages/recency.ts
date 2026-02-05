@@ -8,6 +8,14 @@ import { loadState, saveState } from '../sync/state.js'
 import { fetchMessages } from './fetch.js'
 import { formatMessage } from './format.js'
 import { buildRecencyFrontmatter } from './frontmatter.js'
+import {
+  appendMessagesToBody,
+  buildSectionBody,
+  parseCombinedSections,
+  parseRecencyFrontmatter,
+  splitFrontmatter
+} from './recency-io.js'
+import type { MessageBlock, ParsedSection, RecencyMode } from './recency-types.js'
 import { sortMessagesChronological } from './sort.js'
 import { writeCombinedArchiveFile } from './writer.js'
 
@@ -17,89 +25,6 @@ export interface RecencyExportResult {
   messagesExported: number
   durationMs: number
   outputPath: string
-}
-
-type RecencyMode = 'recent' | 'historical'
-
-type MessageBlock = {
-  text: string
-  timestamp: Date | null
-}
-
-type ParsedSection = {
-  header: string
-  blocks: MessageBlock[]
-}
-
-function parseTimestamp(value: string): Date | null {
-  const iso = value.replace(' UTC', 'Z').replace(' ', 'T')
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return null
-  return date
-}
-
-function splitFrontmatter(content: string): { frontmatter: string | null; body: string } {
-  const match = content.match(/^---\n[\s\S]*?\n---\n\n/)
-  if (!match) return { frontmatter: null, body: content }
-  return { frontmatter: match[0], body: content.slice(match[0].length) }
-}
-
-function parseCombinedSections(body: string): Map<number, ParsedSection> {
-  const sections = new Map<number, ParsedSection>()
-  if (body.trim() === 'No messages.') {
-    return sections
-  }
-
-  const lines = body.split('\n')
-  let currentChatId: number | null = null
-  let currentHeader = ''
-  let currentBlocks: MessageBlock[] = []
-  let currentBlockLines: string[] | null = null
-  let currentBlockDate: Date | null = null
-
-  const flushBlock = () => {
-    if (!currentBlockLines || !currentChatId) return
-    const text = `${currentBlockLines.join('\n')}\n`
-    currentBlocks.push({ text, timestamp: currentBlockDate })
-    currentBlockLines = null
-    currentBlockDate = null
-  }
-
-  const flushSection = () => {
-    if (currentChatId == null) return
-    sections.set(currentChatId, { header: currentHeader, blocks: currentBlocks })
-    currentChatId = null
-    currentHeader = ''
-    currentBlocks = []
-  }
-
-  for (const line of lines) {
-    if (line.startsWith('## Chat: ')) {
-      flushBlock()
-      flushSection()
-      const idMatch = line.match(/\((\-?\d+)\)\s*$/)
-      if (!idMatch) continue
-      currentChatId = Number(idMatch[1])
-      currentHeader = line
-      continue
-    }
-
-    const headerMatch = line.match(/^\*\*\[(.+?)\]\*\*/)
-    if (headerMatch) {
-      flushBlock()
-      currentBlockLines = [line]
-      currentBlockDate = parseTimestamp(headerMatch[1])
-      continue
-    }
-
-    if (currentBlockLines) {
-      currentBlockLines.push(line)
-    }
-  }
-
-  flushBlock()
-  flushSection()
-  return sections
 }
 
 function filterBlocksByCutoff(
@@ -114,73 +39,6 @@ function filterBlocksByCutoff(
       ? block.timestamp >= cutoffDate
       : block.timestamp < cutoffDate
   })
-}
-
-function buildSectionBody(blocks: MessageBlock[]): string {
-  return blocks.map(block => block.text).join('')
-}
-
-function getFrontmatterValue(frontmatter: string, key: string): string | null {
-  const regex = new RegExp(`^${key}:\\s*(.+)$`, 'm')
-  const match = frontmatter.match(regex)
-  if (!match) return null
-  const rawValue = match[1].trim()
-  if (rawValue === 'null') return null
-  if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-    return rawValue.slice(1, -1).replace(/\\"/g, '"')
-  }
-  return rawValue
-}
-
-function parseRecencyFrontmatter(frontmatter: string | null): {
-  messageCount: number
-  chatsWithMessages: number
-  minDate: string | null
-  maxDate: string | null
-} {
-  if (!frontmatter) {
-    return { messageCount: 0, chatsWithMessages: 0, minDate: null, maxDate: null }
-  }
-  const messageCount = Number(getFrontmatterValue(frontmatter, 'message_count') ?? 0)
-  const chatsWithMessages = Number(getFrontmatterValue(frontmatter, 'chats_with_messages') ?? 0)
-  const minDate = getFrontmatterValue(frontmatter, 'min_date')
-  const maxDate = getFrontmatterValue(frontmatter, 'max_date')
-  return { messageCount, chatsWithMessages, minDate, maxDate }
-}
-
-function extractChatIds(body: string): Set<number> {
-  const ids = new Set<number>()
-  const regex = /^## Chat: .*?\((\-?\d+)\)\s*$/gm
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(body)) !== null) {
-    ids.add(Number(match[1]))
-  }
-  return ids
-}
-
-function appendMessagesToBody(
-  body: string,
-  chatId: number,
-  header: string,
-  newBody: string
-): { body: string; isNewSection: boolean } {
-  const headerRegex = new RegExp(`^## Chat: .*?\\(${chatId}\\)\\s*$`, 'm')
-  const match = headerRegex.exec(body)
-  if (!match) {
-    const trimmed = body.trim()
-    const prefix = trimmed ? `${trimmed}\n\n` : ''
-    return { body: `${prefix}${header}\n\n${newBody}`.trimEnd() + '\n', isNewSection: true }
-  }
-
-  const startIndex = match.index
-  const afterHeader = startIndex + match[0].length
-  const nextHeaderRegex = /^## Chat: /gm
-  nextHeaderRegex.lastIndex = afterHeader
-  const nextMatch = nextHeaderRegex.exec(body)
-  const insertIndex = nextMatch ? nextMatch.index : body.length
-  const insertion = `${body[insertIndex - 1] === '\n' ? '' : '\n'}${newBody}`
-  const updatedBody = body.slice(0, insertIndex) + insertion + body.slice(insertIndex)
-  return { body: updatedBody, isNewSection: false }
 }
 
 function compareCutoffForward(previous: string, next: string): boolean {
@@ -237,16 +95,12 @@ export async function exportRecencyChats(
     hasExistingFile &&
     cutoffLabel != null &&
     previousCutoff === cutoffLabel
-  let existingFrontmatter: string | null = null
   let existingBody = ''
-  let existingChatIds = new Set<number>()
   let existingCounts = { messageCount: 0, chatsWithMessages: 0, minDate: null as string | null, maxDate: null as string | null }
   if (appendMode) {
     const existing = readFileSync(outputFilePath, 'utf-8')
     const { frontmatter, body } = splitFrontmatter(existing)
-    existingFrontmatter = frontmatter
     existingBody = body.trim() === 'No messages.' ? '' : body
-    existingChatIds = extractChatIds(existingBody)
     existingCounts = parseRecencyFrontmatter(frontmatter)
   } else if (shouldUseIncremental && hasExistingFile) {
     const existing = readFileSync(outputFilePath, 'utf-8')
@@ -311,7 +165,6 @@ export async function exportRecencyChats(
       const result = appendMessagesToBody(existingBody, chatId, header, sectionBody)
       existingBody = result.body
       if (result.isNewSection) {
-        existingChatIds.add(chatId)
         existingCounts.chatsWithMessages += 1
       }
 
