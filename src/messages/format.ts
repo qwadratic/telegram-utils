@@ -51,6 +51,42 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} UTC`
 }
 
+function formatHeader(timestamp: string, sender: string, messageId: number): string {
+  return `**[${timestamp}]** **${sender}** [id:${messageId}]\n\n`
+}
+
+function formatForwardBlock(msg: Message): string {
+  if (!msg.forward) return ''
+  const fwdSender = msg.forward.sender
+  const fwdName = formatSender(fwdSender)
+  return `> Forwarded from: ${fwdName}\n\n`
+}
+
+function formatReplyBlock(msg: Message): string {
+  if (!msg.replyToMessage) return ''
+  const replyId = msg.replyToMessage.id
+  if (replyId === null) return ''
+  const quoteText = msg.replyToMessage.quoteText || ''
+  if (quoteText) {
+    const truncatedQuote =
+      quoteText.length > 100 ? `${quoteText.slice(0, 100)}...` : quoteText
+    const escapedQuote = truncatedQuote.replace(/\n/g, ' ')
+    return `> In reply to [id:${replyId}]: "${escapedQuote}"\n\n`
+  }
+  return `> In reply to [id:${replyId}]\n\n`
+}
+
+function formatAttachmentBlock(msg: Message): string {
+  if (!msg.media) return ''
+  const mediaType = msg.media.type
+  return `[Attachment: ${mediaType}]\n\n`
+}
+
+function formatMessageBody(text: string | undefined | null): string {
+  if (!text) return ''
+  return `${text}\n\n`
+}
+
 /**
  * Format a Telegram message to Markdown.
  *
@@ -77,48 +113,11 @@ export function formatMessage(msg: Message): string {
   const sender = formatSender(msg.sender)
 
   // Header line with timestamp, sender, and message ID
-  let output = `**[${timestamp}]** **${sender}** [id:${msg.id}]\n\n`
-
-  // Handle forwards
-  if (msg.forward) {
-    const fwdSender = msg.forward.sender
-    const fwdName = formatSender(fwdSender)
-    output += `> Forwarded from: ${fwdName}\n\n`
-  }
-
-  // Handle replies with quote
-  if (msg.replyToMessage) {
-    const replyId = msg.replyToMessage.id
-    const quoteText = msg.replyToMessage.quoteText || ''
-
-    if (replyId !== null) {
-      // Truncate quote to 100 chars
-      const truncatedQuote =
-        quoteText.length > 100 ? `${quoteText.slice(0, 100)}...` : quoteText
-
-      if (truncatedQuote) {
-        // Escape quote text for Markdown blockquote (replace newlines)
-        const escapedQuote = truncatedQuote.replace(/\n/g, ' ')
-        output += `> In reply to [id:${replyId}]: "${escapedQuote}"\n\n`
-      } else {
-        output += `> In reply to [id:${replyId}]\n\n`
-      }
-    }
-  }
-
-  // Handle attachments (media)
-  if (msg.media) {
-    const mediaType = msg.media.type
-    output += `[Attachment: ${mediaType}]\n\n`
-  }
-
-  // Message text without Markdown escaping
-  const text = msg.text || ''
-  if (text) {
-    output += `${text}\n\n`
-  }
-
+  let output = formatHeader(timestamp, sender, msg.id)
+  output += formatForwardBlock(msg)
+  output += formatReplyBlock(msg)
+  output += formatAttachmentBlock(msg)
+  output += formatMessageBody(msg.text)
   output += '---\n\n'
-
   return output
 }

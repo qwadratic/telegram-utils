@@ -15,6 +15,25 @@ function sortMessagesChronological(messages: Message[]): Message[] {
   })
 }
 
+function ensureArchiveDir(): string {
+  const dirPath = join('data', 'archive')
+  mkdirSync(dirPath, { recursive: true })
+  return dirPath
+}
+
+function getArchivePath(chatName: string, chatId: number): string {
+  const safeFilename = sanitizeFilename(chatName, chatId)
+  return join(ensureArchiveDir(), `${safeFilename}.md`)
+}
+
+function buildMessageBody(messages: Message[]): string {
+  let content = ''
+  for (const msg of messages) {
+    content += formatMessage(msg)
+  }
+  return content
+}
+
 /**
  * Create YAML frontmatter for a chat archive file.
  *
@@ -96,23 +115,14 @@ export async function writeChatFile(
 ): Promise<{ filesWritten: number; messagesWritten: number }> {
   // Create an empty file if no messages
   if (messages.length === 0) {
-    const safeFilename = sanitizeFilename(chatName, chatId)
-    const dirPath = join('data', 'archive')
-    mkdirSync(dirPath, { recursive: true })
-    const filePath = join(dirPath, `${safeFilename}.md`)
+    const filePath = getArchivePath(chatName, chatId)
     const content = `${createEmptyFrontmatter(chatName, chatId)}No messages.\n`
     writeFileSync(filePath, content, 'utf-8')
     return { filesWritten: 1, messagesWritten: 0 }
   }
 
   const orderedMessages = sortMessagesChronological(messages)
-
-  // Sanitize chat name for filesystem
-  const safeFilename = sanitizeFilename(chatName, chatId)
-
-  const dirPath = join('data', 'archive')
-  mkdirSync(dirPath, { recursive: true })
-  const filePath = join(dirPath, `${safeFilename}.md`)
+  const filePath = getArchivePath(chatName, chatId)
 
   const firstMsgId = orderedMessages[0].id
   const lastMsgId = orderedMessages[orderedMessages.length - 1].id
@@ -128,10 +138,7 @@ export async function writeChatFile(
     minDate,
     maxDate
   )
-
-  for (const msg of orderedMessages) {
-    content += formatMessage(msg)
-  }
+  content += buildMessageBody(orderedMessages)
 
   writeFileSync(filePath, content, 'utf-8')
 
@@ -145,9 +152,7 @@ export function writeCombinedArchiveFile(
   fileName: string,
   content: string
 ): string {
-  const dirPath = join('data', 'archive')
-  mkdirSync(dirPath, { recursive: true })
-  const filePath = join(dirPath, fileName)
+  const filePath = join(ensureArchiveDir(), fileName)
   writeFileSync(filePath, content, 'utf-8')
   return filePath
 }

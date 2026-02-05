@@ -56,6 +56,49 @@ function normalizePhoneInput(value: string): string {
   return hasPlus ? `+${digitsOnly}` : digitsOnly
 }
 
+function handleChalkError(error: unknown): never {
+  if (error instanceof Error) {
+    console.error(chalk.red(`Error: ${error.message}`))
+  } else {
+    console.error(chalk.red('An unexpected error occurred'))
+  }
+  process.exit(1)
+}
+
+function handlePlainError(error: unknown): never {
+  if (error instanceof Error) {
+    console.error(`Error: ${error.message}`)
+  } else {
+    console.error('An unexpected error occurred')
+  }
+  process.exit(1)
+}
+
+async function runCommand(
+  fn: () => Promise<void>,
+  onError: (error: unknown) => never = handleChalkError
+): Promise<void> {
+  try {
+    await fn()
+  } catch (error) {
+    onError(error)
+  }
+}
+
+async function withAuthenticatedClient<T>(
+  message: string,
+  fn: (tg: TelegramClient) => Promise<T>,
+  options: { silentCancel?: boolean } = {}
+): Promise<T> {
+  const tg = await createClientWithPasswordRetry(message, options)
+  try {
+    await ensureAuthenticated(tg)
+    return await fn(tg)
+  } finally {
+    await tg.destroy()
+  }
+}
+
 async function resolveExportConfig(tg: TelegramClient) {
   let config = loadConfig()
   if (config.trackedFolderIds.length === 0) {
@@ -118,25 +161,20 @@ program
   .command('auth')
   .description('Authenticate with Telegram')
   .action(async () => {
-    try {
+    await runCommand(async () => {
       // Prompt for session password (decrypts/encrypts session.db)
       intro(chalk.cyan('Session Password'))
       const tg = await createClientWithPasswordRetry(
         'Enter session password (encrypts your session file):'
       )
 
-      const user = await ensureAuthenticated(tg)
-      console.log(chalk.green(`\nLogged in as: ${user.firstName} ${user.lastName || ''} (@${user.username || 'no username'})`))
-
-      await tg.destroy()
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(chalk.red(`Error: ${e.message}`))
-      } else {
-        console.error(chalk.red('An unexpected error occurred'))
+      try {
+        const user = await ensureAuthenticated(tg)
+        console.log(chalk.green(`\nLogged in as: ${user.firstName} ${user.lastName || ''} (@${user.username || 'no username'})`))
+      } finally {
+        await tg.destroy()
       }
-      process.exit(1)
-    }
+    })
   })
 
 program
@@ -144,28 +182,13 @@ program
   .description('Select Telegram folders to export')
   .option('--select', 'Force folder re-selection')
   .action(async (options) => {
-    try {
+    await runCommand(async () => {
       intro(chalk.cyan('Export Setup'))
-      const tg = await createClientWithPasswordRetry('Enter session password:')
-
-      try {
-        // Ensure user is authenticated before accessing folders
-        await ensureAuthenticated(tg)
-
+      await withAuthenticatedClient('Enter session password:', async (tg) => {
         // Sync setup config (first run: select, subsequent: refresh)
         await syncFolderConfig(tg, options.select)
-
-      } finally {
-        await tg.destroy()
-      }
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(chalk.red(`Error: ${e.message}`))
-      } else {
-        console.error(chalk.red('An unexpected error occurred'))
-      }
-      process.exit(1)
-    }
+      })
+    })
   })
 
 const exportCommand = program
@@ -179,53 +202,40 @@ exportCommand
   .command('sync')
   .description('Sync chats into per-chat archive files')
   .action(async () => {
-    try {
+    await runCommand(async () => {
       intro(chalk.cyan('Export Chats'))
-      const tg = await createClientWithPasswordRetry('Enter session password:', {
-        silentCancel: true,
-      })
+      await withAuthenticatedClient(
+        'Enter session password:',
+        async (tg) => {
+          const config = await resolveExportConfig(tg)
+          if (!config) {
+            return
+          }
 
-      try {
-        // Ensure user is authenticated
-        await ensureAuthenticated(tg)
+          // Run incremental sync
+          const result = await syncChats(tg, config)
 
-        const config = await resolveExportConfig(tg)
-        if (!config) {
-          return
-        }
-
-        // Run incremental sync
-        const result = await syncChats(tg, config)
-
-        // Display sync summary
-        const duration = formatDuration(result.durationMs)
-        const parts = [
-          `${result.chatsProcessed} chats synced`,
-          `${result.messagesAppended} messages`,
-          `${result.filesUpdated} files updated`,
-        ]
-        if (result.newChatsAdded > 0) {
-          parts.push(`${result.newChatsAdded} new chats added`)
-        }
-        if (result.newFoldersAdded > 0) {
-          parts.push(`${result.newFoldersAdded} new folders tracked`)
-        }
-        if (result.chatsSkipped > 0) {
-          parts.push(`${result.chatsSkipped} empty chats skipped`)
-        }
-        console.log(chalk.green(`\n${parts.join(', ')} in ${duration}`))
-
-      } finally {
-        await tg.destroy()
-      }
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(chalk.red(`Error: ${e.message}`))
-      } else {
-        console.error(chalk.red('An unexpected error occurred'))
-      }
-      process.exit(1)
-    }
+          // Display sync summary
+          const duration = formatDuration(result.durationMs)
+          const parts = [
+            `${result.chatsProcessed} chats synced`,
+            `${result.messagesAppended} messages`,
+            `${result.filesUpdated} files updated`,
+          ]
+          if (result.newChatsAdded > 0) {
+            parts.push(`${result.newChatsAdded} new chats added`)
+          }
+          if (result.newFoldersAdded > 0) {
+            parts.push(`${result.newFoldersAdded} new folders tracked`)
+          }
+          if (result.chatsSkipped > 0) {
+            parts.push(`${result.chatsSkipped} empty chats skipped`)
+          }
+          console.log(chalk.green(`\n${parts.join(', ')} in ${duration}`))
+        },
+        { silentCancel: true }
+      )
+    })
   })
 
 exportCommand
@@ -233,42 +243,32 @@ exportCommand
   .description('Export recent messages across all chats to data/archive/recent.md')
   .requiredOption('--cutoff <YYYY-MM-DD>', 'Cutoff date for recent messages (inclusive)')
   .action(async (options: { cutoff: string }) => {
-    try {
+    await runCommand(async () => {
       intro(chalk.cyan('Export Recent Messages'))
       const cutoffDate = parseCutoffDate(options.cutoff)
       if (!cutoffDate) {
         console.error(chalk.red('Error: --cutoff must be in YYYY-MM-DD format'))
         process.exit(1)
       }
-      const tg = await createClientWithPasswordRetry('Enter session password:', {
-        silentCancel: true,
-      })
+      await withAuthenticatedClient(
+        'Enter session password:',
+        async (tg) => {
+          const config = await resolveExportConfig(tg)
+          if (!config) return
 
-      try {
-        await ensureAuthenticated(tg)
-        const config = await resolveExportConfig(tg)
-        if (!config) return
-
-        const result = await exportRecencyChats(
-          tg,
-          config,
-          cutoffDate,
-          'recent',
-          options.cutoff
-        )
-        const duration = formatDuration(result.durationMs)
-        console.log(chalk.green(`\n${result.messagesExported} recent messages exported to ${result.outputPath} in ${duration}`))
-      } finally {
-        await tg.destroy()
-      }
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(chalk.red(`Error: ${e.message}`))
-      } else {
-        console.error(chalk.red('An unexpected error occurred'))
-      }
-      process.exit(1)
-    }
+          const result = await exportRecencyChats(
+            tg,
+            config,
+            cutoffDate,
+            'recent',
+            options.cutoff
+          )
+          const duration = formatDuration(result.durationMs)
+          console.log(chalk.green(`\n${result.messagesExported} recent messages exported to ${result.outputPath} in ${duration}`))
+        },
+        { silentCancel: true }
+      )
+    })
   })
 
 exportCommand
@@ -276,42 +276,32 @@ exportCommand
   .description('Export historical messages across all chats to data/archive/historical.md')
   .requiredOption('--cutoff <YYYY-MM-DD>', 'Cutoff date for historical messages (exclusive)')
   .action(async (options: { cutoff: string }) => {
-    try {
+    await runCommand(async () => {
       intro(chalk.cyan('Export Historical Messages'))
       const cutoffDate = parseCutoffDate(options.cutoff)
       if (!cutoffDate) {
         console.error(chalk.red('Error: --cutoff must be in YYYY-MM-DD format'))
         process.exit(1)
       }
-      const tg = await createClientWithPasswordRetry('Enter session password:', {
-        silentCancel: true,
-      })
+      await withAuthenticatedClient(
+        'Enter session password:',
+        async (tg) => {
+          const config = await resolveExportConfig(tg)
+          if (!config) return
 
-      try {
-        await ensureAuthenticated(tg)
-        const config = await resolveExportConfig(tg)
-        if (!config) return
-
-        const result = await exportRecencyChats(
-          tg,
-          config,
-          cutoffDate,
-          'historical',
-          options.cutoff
-        )
-        const duration = formatDuration(result.durationMs)
-        console.log(chalk.green(`\n${result.messagesExported} historical messages exported to ${result.outputPath} in ${duration}`))
-      } finally {
-        await tg.destroy()
-      }
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(chalk.red(`Error: ${e.message}`))
-      } else {
-        console.error(chalk.red('An unexpected error occurred'))
-      }
-      process.exit(1)
-    }
+          const result = await exportRecencyChats(
+            tg,
+            config,
+            cutoffDate,
+            'historical',
+            options.cutoff
+          )
+          const duration = formatDuration(result.durationMs)
+          console.log(chalk.green(`\n${result.messagesExported} historical messages exported to ${result.outputPath} in ${duration}`))
+        },
+        { silentCancel: true }
+      )
+    })
   })
 
 program
@@ -323,7 +313,7 @@ program
   .option('--keep', 'Do not remove imported contacts after checking')
   .option('--debug', 'Print import request/response details to stderr')
   .action(async (phonesArg: string, options: { batch: string; delay: string; keep?: boolean; debug?: boolean }) => {
-    try {
+    await runCommand(async () => {
       // Parse comma-separated phones
       const rawParts = phonesArg.split(',')
       const phones = rawParts.map(normalizePhoneInput).filter(Boolean)
@@ -338,58 +328,47 @@ program
       }
 
       // Session password via prompt (stderr so it doesn't pollute CSV output)
-      const tg = await createClientWithPasswordRetry('Enter session password:')
-
-      try {
-        await ensureAuthenticated(tg)
-
-        const parsedBatchSize = Number.parseInt(options.batch, 10)
-        const parsedDelayMs = Number.parseInt(options.delay, 10)
-        if (!Number.isFinite(parsedBatchSize) || parsedBatchSize < 1) {
-          console.error('Error: --batch must be a positive integer')
-          process.exit(1)
-        }
-        if (!Number.isFinite(parsedDelayMs) || parsedDelayMs < 0) {
-          console.error('Error: --delay must be zero or a positive integer')
-          process.exit(1)
-        }
-
-        const s = spinner()
-        s.start(`Checked 0 of ${phones.length} phones...`)
-
-        const results = await importContactsByPhone(tg, phones, {
-          batchSize: parsedBatchSize,
-          delayMs: parsedDelayMs,
-          deleteAfter: !options.keep,
-          debug: options.debug,
-          onProgress: (checked, total) => {
-            s.message(`Checked ${checked} of ${total} phones...`)
+      await withAuthenticatedClient(
+        'Enter session password:',
+        async (tg) => {
+          const parsedBatchSize = Number.parseInt(options.batch, 10)
+          const parsedDelayMs = Number.parseInt(options.delay, 10)
+          if (!Number.isFinite(parsedBatchSize) || parsedBatchSize < 1) {
+            console.error('Error: --batch must be a positive integer')
+            process.exit(1)
           }
-        })
-
-        s.stop(`Checked ${phones.length} phones`)
-        const validResults = results.filter(r => r.userId != null)
-
-        // Output CSV to stdout (header + data)
-        if (validResults.length > 0) {
-          console.log('user_id,phone_number,username')
-          for (const r of validResults) {
-            console.log(`${r.userId},${r.phone},${r.username ?? ''}`)
+          if (!Number.isFinite(parsedDelayMs) || parsedDelayMs < 0) {
+            console.error('Error: --delay must be zero or a positive integer')
+            process.exit(1)
           }
-        }
-        console.error(`checked=${results.length}, valid=${validResults.length}`)
 
-      } finally {
-        await tg.destroy()
-      }
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(`Error: ${e.message}`)
-      } else {
-        console.error('An unexpected error occurred')
-      }
-      process.exit(1)
-    }
+          const s = spinner()
+          s.start(`Checked 0 of ${phones.length} phones...`)
+
+          const results = await importContactsByPhone(tg, phones, {
+            batchSize: parsedBatchSize,
+            delayMs: parsedDelayMs,
+            deleteAfter: !options.keep,
+            debug: options.debug,
+            onProgress: (checked, total) => {
+              s.message(`Checked ${checked} of ${total} phones...`)
+            }
+          })
+
+          s.stop(`Checked ${phones.length} phones`)
+          const validResults = results.filter(r => r.userId != null)
+
+          // Output CSV to stdout (header + data)
+          if (validResults.length > 0) {
+            console.log('user_id,phone_number,username')
+            for (const r of validResults) {
+              console.log(`${r.userId},${r.phone},${r.username ?? ''}`)
+            }
+          }
+          console.error(`checked=${results.length}, valid=${validResults.length}`)
+        }
+      )
+    }, handlePlainError)
   })
 
 program.parse()
