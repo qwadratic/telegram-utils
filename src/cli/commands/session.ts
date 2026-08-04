@@ -8,6 +8,7 @@ import { peerCacheStats, SESSION_DB_PATH } from '../../session/cache.js'
 import { getOrCreateDbKey, readSecret, SECRETS } from '../../session/psst.js'
 import { LOCK_PATH } from '../../session/lock.js'
 import { loadConfig } from '../../config/index.js'
+import { OperatorError } from '../../errors.js'
 import { runCommand, handlePlainError } from '../errors.js'
 
 /**
@@ -21,12 +22,24 @@ function fingerprint(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 12)
 }
 
-/** Re-run this same CLI as a child process, carrying any tsx loader flags. */
+/**
+ * Re-run this same CLI as a child process, carrying any tsx loader flags.
+ *
+ * A genuinely separate process is the point: it is the only way to show that
+ * the peer cache outlives one client rather than one object in memory.
+ */
 function respawn(args: string[]): string {
-  return execFileSync(process.execPath, [...process.execArgv, process.argv[1], ...args], {
-    encoding: 'utf-8',
-    stdio: ['ignore', 'pipe', 'inherit']
-  })
+  try {
+    return execFileSync(process.execPath, [...process.execArgv, process.argv[1], ...args], {
+      encoding: 'utf-8',
+      // stderr inherited so the child's own diagnosis reaches the user directly.
+      stdio: ['ignore', 'pipe', 'inherit']
+    })
+  } catch {
+    // The child already explained itself above; repeating its full argv here
+    // would bury that explanation under a wall of loader flags.
+    throw new OperatorError(`Child run failed: ${args.join(' ')} (see the error above)`)
+  }
 }
 
 interface ProbeReport {
@@ -202,7 +215,7 @@ export function registerSessionCommand(program: Command): void {
         }
 
         if (failed > 0) {
-          throw new Error(`${failed} of ${checks.length} peer-persistence checks failed`)
+          throw new OperatorError(`${failed} of ${checks.length} peer-persistence checks failed`)
         }
         console.log(chalk.green('\nPeer list is maintained across client-independent runs.'))
       })
