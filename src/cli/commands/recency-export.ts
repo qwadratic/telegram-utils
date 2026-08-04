@@ -14,7 +14,6 @@ export async function runRecencyExport(options: {
 }): Promise<void> {
   intro(chalk.cyan(options.introTitle))
   await withAuthenticatedClient(
-    'Enter session password:',
     async (tg) => {
       const config = await resolveExportConfig(tg)
       if (!config) return
@@ -31,7 +30,6 @@ export async function runRecencyExport(options: {
         `${result.messagesExported} ${options.mode} messages exported to ${result.outputPath} in ${duration}`,
         { leadingNewline: true }
       )
-    },
-    { silentCancel: true }
+    }
   )
 }

@@ -14,7 +14,6 @@ export function registerExportSyncCommand(exportCommand: Command): void {
       await runCommand(async () => {
         intro(chalk.cyan('Export Chats'))
         await withAuthenticatedClient(
-          'Enter session password:',
           async (tg) => {
             const config = await resolveExportConfig(tg)
             if (!config) {
@@ -41,8 +40,7 @@ export function registerExportSyncCommand(exportCommand: Command): void {
               parts.push(`${result.chatsSkipped} empty chats skipped`)
             }
             logSummary(`${parts.join(', ')} in ${duration}`, { leadingNewline: true })
-          },
-          { silentCancel: true }
+          }
         )
       })
     })

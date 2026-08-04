@@ -13,7 +13,7 @@ export function registerSetupCommand(program: Command): void {
     .action(async (options) => {
       await runCommand(async () => {
         intro(chalk.cyan('Export Setup'))
-        await withAuthenticatedClient('Enter session password:', async (tg) => {
+        await withAuthenticatedClient(async (tg) => {
           // Sync setup config (first run: select, subsequent: refresh)
           await syncFolderConfig(tg, options.select)
         })

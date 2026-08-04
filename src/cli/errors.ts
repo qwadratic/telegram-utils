@@ -1,9 +1,10 @@
 import chalk from 'chalk'
+import { OperatorError } from '../errors.js'
 
 export function handleChalkError(error: unknown): never {
   if (error instanceof Error) {
     console.error(chalk.red(`Error: ${error.message}`))
-    if (error.stack) {
+    if (error.stack && !(error instanceof OperatorError)) {
       console.error(chalk.red(error.stack))
     }
   } else {
@@ -15,7 +16,7 @@ export function handleChalkError(error: unknown): never {
 export function handlePlainError(error: unknown): never {
   if (error instanceof Error) {
     console.error(`Error: ${error.message}`)
-    if (error.stack) {
+    if (error.stack && !(error instanceof OperatorError)) {
       console.error(error.stack)
     }
   } else {

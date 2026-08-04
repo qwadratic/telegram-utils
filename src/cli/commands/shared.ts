@@ -1,8 +1,6 @@
-import { confirm, isCancel, password } from '@clack/prompts'
-import chalk from 'chalk'
+import { confirm, isCancel } from '@clack/prompts'
 import type { TelegramClient } from '@mtcute/node'
-import { createClient } from '../../client.js'
-import { ensureAuthenticated } from '../../auth.js'
+import { withSession, type OpenSessionOptions } from '../../session/index.js'
 import { refreshTrackedChats, syncFolderConfig } from '../../folders/index.js'
 import { loadConfig } from '../../config/index.js'
 import { logWarning } from '../log.js'
@@ -22,18 +20,18 @@ export function formatDuration(ms: number): string {
   return `${seconds}s`
 }
 
+/**
+ * Run `fn` with an authenticated client.
+ *
+ * No password prompt: the session comes from the psst vault or the local
+ * encrypted cache, so every command below works unattended. The single-instance
+ * lock is held for the duration.
+ */
 export async function withAuthenticatedClient<T>(
-  message: string,
   fn: (tg: TelegramClient) => Promise<T>,
-  options: { silentCancel?: boolean } = {}
+  options: OpenSessionOptions = {}
 ): Promise<T> {
-  const tg = await createClientWithPasswordRetry(message, options)
-  try {
-    await ensureAuthenticated(tg)
-    return await fn(tg)
-  } finally {
-    await tg.destroy()
-  }
+  return withSession((tg) => fn(tg), options)
 }
 
 export async function resolveExportConfig(tg: TelegramClient) {
@@ -60,31 +58,3 @@ export async function resolveExportConfig(tg: TelegramClient) {
   return refreshed.config
 }
 
-export async function createClientWithPasswordRetry(
-  message: string,
-  options: { silentCancel?: boolean } = {}
-): Promise<TelegramClient> {
-  for (;;) {
-    const sessionPass = await password({ message })
-    if (isCancel(sessionPass)) {
-      if (!options.silentCancel) {
-        console.log(chalk.yellow('Cancelled'))
-      }
-      process.exit(0)
-    }
-
-    const tg = createClient(sessionPass as string)
-    try {
-      await tg.connect()
-      return tg
-    } catch (error) {
-      await tg.destroy().catch(() => undefined)
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      if (/invalid session password/i.test(errorMessage)) {
-        console.error(chalk.red('Invalid session password. Please try again.'))
-        continue
-      }
-      throw error
-    }
-  }
-}

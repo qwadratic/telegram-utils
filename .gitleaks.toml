@@ -1,0 +1,7 @@
+# gitleaks config - entropy/regex secret scanning (complements psst vault-value matching).
+[extend]
+useDefault = true
+
+# No [allowlist] block until there is a real false positive to exempt: gitleaks
+# rejects an allowlist with no checks in it, and a rejected config means the
+# scan silently does nothing.

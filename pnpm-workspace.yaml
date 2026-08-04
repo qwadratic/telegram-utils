@@ -1,3 +1,10 @@
+# better-sqlite3-multiple-ciphers is the only native build we need: it provides
+# the encrypted session cache. The other two are transitive and unused here.
+allowBuilds:
+  better-sqlite3: false
+  better-sqlite3-multiple-ciphers: true
+  esbuild: false
+
 ignoredBuiltDependencies:
   - better-sqlite3
   - esbuild

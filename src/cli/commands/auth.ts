@@ -1,27 +1,27 @@
-import { intro } from '@clack/prompts'
 import chalk from 'chalk'
 import type { Command } from 'commander'
-import { ensureAuthenticated } from '../../auth.js'
+import { openSession } from '../../session/index.js'
+import { SECRETS } from '../../session/psst.js'
 import { runCommand } from '../errors.js'
-import { createClientWithPasswordRetry } from './shared.js'
 
+/**
+ * Kept as the short spelling of `session login`, since it is the verb people
+ * reach for first and it was the command this tool shipped with.
+ */
 export function registerAuthCommand(program: Command): void {
   program
     .command('auth')
-    .description('Authenticate with Telegram')
-    .action(async () => {
+    .description('Authenticate with Telegram (alias for "session login")')
+    .option('--force', 'Discard the local cache and log in again')
+    .action(async (options) => {
       await runCommand(async () => {
-        // Prompt for session password (decrypts/encrypts session.db)
-        intro(chalk.cyan('Session Password'))
-        const tg = await createClientWithPasswordRetry(
-          'Enter session password (encrypts your session file):'
-        )
-
+        const handle = await openSession({ interactive: true, forceImport: options.force })
         try {
-          const user = await ensureAuthenticated(tg)
-          console.log(chalk.green(`\nLogged in as: ${user.firstName} ${user.lastName || ''} (@${user.username || 'no username'})`))
+          const label = `${handle.user.firstName} ${handle.user.lastName ?? ''}`.trim()
+          console.log(chalk.green(`\nLogged in as: ${label} (@${handle.user.username ?? 'no username'})`))
+          console.log(chalk.dim(`Session source: ${handle.source}; stored in psst as ${SECRETS.session}`))
         } finally {
-          await tg.destroy()
+          await handle.close()
         }
       })
     })

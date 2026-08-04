@@ -2,6 +2,7 @@ import { TelegramClient, tl } from '@mtcute/node'
 import { getMarkedPeerId } from '@mtcute/core'
 import { multiselect, isCancel } from '@clack/prompts'
 import { loadConfig, saveConfig, Config } from '../config/index.js'
+import { loadState, saveState, updateFolderState } from '../sync/state.js'
 
 /**
  * Basic folder information for display
@@ -136,13 +137,19 @@ function haveSameChatIds(a: number[], b: number[]): boolean {
 export async function buildTrackedChatIds(
   tg: TelegramClient,
   trackedFolderIds: number[]
-): Promise<{ folderIds: number[]; chatIds: number[] }> {
+): Promise<{
+  folderIds: number[]
+  chatIds: number[]
+  /** Per-folder membership, kept so folder listings work offline. */
+  folders: { id: number; title: string; chatIds: number[] }[]
+}> {
   const rawResult = await tg.getFolders()
   const rawFilters = rawResult.filters.filter(
     (f): f is EnumerableFolder => f._ !== 'dialogFilterDefault'
   )
 
   const validFolderIds: number[] = []
+  const folders: { id: number; title: string; chatIds: number[] }[] = []
   const chatIdSet = new Set<number>()
 
   for (const folderId of trackedFolderIds) {
@@ -155,12 +162,33 @@ export async function buildTrackedChatIds(
 
     validFolderIds.push(folderId)
     const currentChatIds = getChatIdsFromFolder(rawFilter)
+    folders.push({ id: folderId, title: rawFilter.title.text, chatIds: currentChatIds })
     for (const id of currentChatIds) {
       chatIdSet.add(id)
     }
   }
 
-  return { folderIds: validFolderIds, chatIds: [...chatIdSet] }
+  return { folderIds: validFolderIds, chatIds: [...chatIdSet], folders }
+}
+
+/**
+ * Persist folder membership into sync state.
+ *
+ * Kept separate from config because config answers "what should we export" while
+ * sync state answers "what did we already export, and when" - which is what the
+ * `folders list` view reads.
+ */
+function recordFolderMembership(folders: { id: number; title: string; chatIds: number[] }[]): void {
+  const state = loadState()
+  for (const folder of folders) {
+    updateFolderState(state, folder.id, folder.chatIds, folder.title)
+  }
+  // Drop folders the user has stopped tracking so listings do not show ghosts.
+  const tracked = new Set(folders.map(f => f.id))
+  for (const id of Object.keys(state.folders)) {
+    if (!tracked.has(Number(id))) delete state.folders[Number(id)]
+  }
+  saveState(state)
 }
 
 /**
@@ -170,9 +198,11 @@ export async function refreshTrackedChats(
   tg: TelegramClient,
   config: Config
 ): Promise<{ updated: boolean; config: Config }> {
-  const { folderIds, chatIds } = await buildTrackedChatIds(tg, config.trackedFolderIds)
+  const { folderIds, chatIds, folders } = await buildTrackedChatIds(tg, config.trackedFolderIds)
   const { added, removed } = diffChatLists(config.trackedChatIds, chatIds)
   const chatsChanged = !haveSameChatIds(config.trackedChatIds, chatIds)
+
+  recordFolderMembership(folders)
 
   if (added.length > 0) {
     const addedWithNames = await Promise.all(
@@ -237,10 +267,9 @@ export async function syncFolderConfig(tg: TelegramClient, forceSelect = false):
     console.log(`Refreshing chat list from ${trackedFolderIds.length} selected folder(s)...`)
   }
 
-  const { folderIds, chatIds } = await buildTrackedChatIds(tg, trackedFolderIds)
-  const { added, removed } = diffChatLists(config.trackedChatIds, chatIds)
+  const { folderIds, chatIds, folders: membership } = await buildTrackedChatIds(tg, trackedFolderIds)
 
-
+  recordFolderMembership(membership)
 
   config.trackedFolderIds = folderIds
   config.trackedChatIds = chatIds

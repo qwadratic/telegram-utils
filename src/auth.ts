@@ -3,11 +3,25 @@ import { text, password, isCancel, intro, outro, spinner } from '@clack/prompts'
 import chalk from 'chalk'
 import { withFloodWaitHandling } from './utils/flood-wait.js'
 
+/**
+ * Telegram errors that all mean the same thing operationally: this auth key is
+ * dead and only a fresh login can fix it. AUTH_KEY_DUPLICATED shows up when one
+ * session gets used from two places at once - the single-instance lock exists to
+ * stop us causing it ourselves.
+ */
+const DEAD_SESSION_ERRORS = [
+  'AUTH_KEY_UNREGISTERED',
+  'AUTH_KEY_DUPLICATED',
+  'SESSION_REVOKED',
+  'SESSION_EXPIRED'
+] as const
+
+/** Returns the logged-in user, or null when the session needs to be recreated. */
 export async function checkSession(tg: TelegramClient): Promise<User | null> {
   try {
     return await tg.getMe()
   } catch (e) {
-    if (tl.RpcError.is(e, 'AUTH_KEY_UNREGISTERED')) {
+    if (DEAD_SESSION_ERRORS.some((code) => tl.RpcError.is(e, code))) {
       return null
     }
     throw e

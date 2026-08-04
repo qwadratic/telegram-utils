@@ -2,6 +2,88 @@
 
 TypeScript CLI tool that exports Telegram chats from selected folders into a searchable archive for AI-powered knowledge bases.
 
+![Export journeys](demo/out/telegram-utils-export-journeys.gif)
+
+## Quick start
+
+```sh
+pnpm install
+psst init                              # local vault for this project
+psst set API_ID && psst set API_HASH   # or reuse TG_API_ID / TG_API_HASH from your global vault
+
+symbiotic-chats session login          # once, at a terminal: phone + code + 2FA
+symbiotic-chats setup                  # pick which Telegram folders to export
+symbiotic-chats export chats           # unattended from here on
+```
+
+After `session login` no command ever prompts for a password again, which is
+what makes cron jobs and agents possible.
+
+## Sessions
+
+The Telegram session lives in a [psst](https://github.com/vpetrigo/psst) vault as
+`TG_SESSION_STRING`. A run resolves it cheapest-first:
+
+1. `$TG_SESSION_STRING` in the environment - set by `psst run`, `psst NAME -- cmd`, or CI
+2. the local encrypted cache at `data/session.db`
+3. the vault, imported into a fresh cache
+4. an interactive login, whose result is written back to the vault
+
+| command | purpose |
+| --- | --- |
+| `session login [--force]` | manual auth flow; stores the session string in psst |
+| `session status [--json]` | session, peer cache and lock state; connects to nothing |
+| `session verify` | proves the peer cache survives across separate processes |
+| `session probe [--resolve n]` | one authenticated run, JSON report (used by `verify`) |
+
+### Two secrets, two jobs
+
+- **`TG_SESSION_STRING`** is the portable auth key. It is the unit of deployment:
+  copy it to another machine and that machine is logged in.
+- **`TG_SESSION_DB_KEY`** encrypts `data/session.db` at rest and is generated per
+  machine on first use. It is not worth copying - the cache it protects is
+  regenerable.
+
+`session status` prints a **fingerprint** of the session string, never the
+string, so you can confirm two machines share a session without exposing it.
+
+### Deploying a session elsewhere
+
+```sh
+psst get TG_SESSION_STRING | ssh host 'cd app && psst set TG_SESSION_STRING --stdin'
+ssh host 'cd app && symbiotic-chats session login --force'   # adopt it, discard any old cache
+```
+
+Revoke a leaked session in Telegram under Settings > Privacy & Security >
+Active Sessions. Deleting the vault entry alone does not revoke anything.
+
+### Why a local cache exists at all
+
+A string session carries `{ version, primaryDcs, self, authKey }` and **no
+peers**. Without `data/session.db` every run would re-resolve every chat's
+access hash, which is slow and burns rate limit. `session verify` is the proof
+that it works: it runs two independent processes and checks that the second one
+sees the first one's peers *before* opening a connection.
+
+### One instance at a time
+
+`data/session.lock` holds the pid of the running instance. Two clients sharing
+one auth key corrupt Telegram's message-box state and can get the session
+revoked, so a second run is refused rather than queued. A lock left behind by a
+crash is reclaimed automatically once its pid is gone.
+
+## Automation
+
+- `SYMBIOTIC_NON_INTERACTIVE=1` turns "ask the user" into a clear failure. Set it
+  in cron jobs and agent runs, which often have a pty and would otherwise hang
+  forever on a phone-number prompt.
+- `--json` on `folders list` and `session status` is machine-readable; stdout
+  carries only the payload.
+- Exit codes: `0` success, `1` failure. Environment problems print an
+  instruction and no stack trace.
+- Data paths resolve against the current directory, so one install can drive
+  several archives by `cd`-ing into them.
+
 ## Major Requirements (MVP)
 
 - Authenticate with Telegram and persist encrypted session
@@ -28,6 +110,8 @@ TypeScript CLI tool that exports Telegram chats from selected folders into a sea
 - `symbiotic-chats export chats` - export chats into per-chat archives
 - `symbiotic-chats export recent --cutoff <value>` - combined recent export (cutoff required, inclusive)
 - `symbiotic-chats export historical [--cutoff <value>]` - combined historical export (cutoff optional, exclusive)
+- `symbiotic-chats folders list [--json]` - folders already synced, most recently updated first
+- `symbiotic-chats folders update [--folder <id> | --all]` - re-export one folder, or every folder stalest-first
 
 Notes:
 
@@ -43,3 +127,9 @@ Cutoff shortcuts:
 - `start-of-month`
 - `start-of-year`
 - `last-7-days`
+
+## Demo
+
+`demo/render.sh` rebuilds the recording above. It drives the real CLI against
+`demo/workspace`, a synthetic archive built by `demo/make-fixture.mjs`, so every
+folder and chat name on screen is invented and nothing publishable can leak.

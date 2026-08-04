@@ -30,9 +30,8 @@ export function registerCheckPhonesCommand(program: Command): void {
           logWarning(`Skipped ${skippedCount} empty entries after parsing`, { stderr: true })
         }
 
-        // Session password via prompt (stderr so it doesn't pollute CSV output)
+        // Session resolves from the vault, so stdout stays pure CSV.
         await withAuthenticatedClient(
-          'Enter session password:',
           async (tg) => {
             const parsedBatchSize = Number.parseInt(options.batch, 10)
             const parsedDelayMs = Number.parseInt(options.delay, 10)
