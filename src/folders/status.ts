@@ -1,4 +1,20 @@
 import type { SyncState } from '../sync/state.js'
+import type { FolderRef } from '../messages/frontmatter.js'
+
+/**
+ * Every tracked folder that currently holds this chat, lowest id first.
+ *
+ * Derived from the folder membership snapshot already in state rather than
+ * stored per chat, so it cannot drift. Ordered so the rendered `folder_ids`
+ * is stable run to run - an unstable field would rewrite every file and
+ * re-ship the whole archive on every pass.
+ */
+export function foldersForChat(state: SyncState, chatId: number): FolderRef[] {
+  return Object.entries(state.folders)
+    .filter(([, folder]) => folder.chatIds.includes(chatId))
+    .map(([rawId, folder]) => ({ id: Number(rawId), title: folder.title ?? `folder ${rawId}` }))
+    .sort((a, b) => a.id - b.id)
+}
 
 export interface FolderStatus {
   id: number

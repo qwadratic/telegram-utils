@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { writeFileAtomic } from '../utils/atomic.js'
 
 /**
  * Sync state structure for tracking incremental exports.
@@ -61,7 +62,10 @@ export function loadState(): SyncState {
 
 /**
  * Save sync state to disk. Creates data/ directory if needed.
- * Uses sync operations for CLI simplicity and to avoid race conditions.
+ *
+ * Atomic, because a half-written watermark is worse than a lost archive file:
+ * the watermark is what decides whether the missing messages are ever fetched
+ * again. 0600 because this file names every chat being archived.
  */
 export function saveState(state: SyncState): void {
   const dir = dirname(STATE_PATH)
@@ -70,7 +74,7 @@ export function saveState(state: SyncState): void {
     mkdirSync(dir, { recursive: true })
   }
 
-  writeFileSync(STATE_PATH, JSON.stringify(state, null, 2))
+  writeFileAtomic(STATE_PATH, JSON.stringify(state, null, 2), 0o600)
 }
 
 /**

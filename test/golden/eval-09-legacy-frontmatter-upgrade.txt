@@ -1,0 +1,12 @@
+chat_name: "Legacy Chat"
+chat_id: 202
+first_message_id: 1
+last_message_id: 3
+message_count: 3
+min_date: "2026-01-01T00:00:00.000Z"
+max_date: "2026-01-03T00:00:00.000Z"
+exported_at: "<EXPORTED_AT>"
+type: note
+title: "Legacy Chat"
+folder_ids: [7]
+folder_title: "Work"

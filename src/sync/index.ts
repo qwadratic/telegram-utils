@@ -6,6 +6,8 @@ import { loadState, saveState, updateChatState } from './state.js'
 import { appendToChatFile } from './append.js'
 import { fetchMessages } from '../messages/fetch.js'
 import { writeChatFile } from '../messages/writer.js'
+import { foldersForChat } from '../folders/status.js'
+import type { FolderRef } from '../messages/frontmatter.js'
 
 /**
  * Result from a sync operation.
@@ -42,10 +44,11 @@ async function appendOrWriteChat(options: {
   messages: Message[]
   isFirstSync: boolean
   lastMsgId: number | undefined
+  folders: FolderRef[]
 }): Promise<{ messagesAppended: number; filesUpdated: number; skipped: boolean; newestMsgId: number }> {
   if (options.messages.length === 0) {
     if (options.isFirstSync || !options.lastMsgId) {
-      const { filesWritten } = await writeChatFile(options.chatName, options.chatId, options.messages)
+      const { filesWritten } = await writeChatFile(options.chatName, options.chatId, options.messages, options.folders)
       return { messagesAppended: 0, filesUpdated: filesWritten, skipped: false, newestMsgId: 0 }
     }
     return { messagesAppended: 0, filesUpdated: 0, skipped: true, newestMsgId: options.lastMsgId ?? 0 }
@@ -53,7 +56,7 @@ async function appendOrWriteChat(options: {
 
   if (options.isFirstSync || !options.lastMsgId) {
     // Full export for new chats
-    const { messagesWritten, filesWritten } = await writeChatFile(options.chatName, options.chatId, options.messages)
+    const { messagesWritten, filesWritten } = await writeChatFile(options.chatName, options.chatId, options.messages, options.folders)
     return {
       messagesAppended: messagesWritten,
       filesUpdated: filesWritten,
@@ -63,7 +66,7 @@ async function appendOrWriteChat(options: {
   }
 
   // Incremental: append all new messages to existing chat file
-  const result = appendToChatFile(options.chatName, options.chatId, options.messages)
+  const result = appendToChatFile(options.chatName, options.chatId, options.messages, options.folders)
   return {
     messagesAppended: result.messagesAppended,
     filesUpdated: result.messagesAppended > 0 ? 1 : 0,
@@ -169,7 +172,8 @@ export async function syncChats(
         chatId,
         messages,
         isFirstSync,
-        lastMsgId
+        lastMsgId,
+        folders: foldersForChat(state, chatId)
       })
 
     if (skipped) {

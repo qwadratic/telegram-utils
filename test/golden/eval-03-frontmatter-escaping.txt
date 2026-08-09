@@ -1,4 +1,8 @@
 ---
+type: note
+title: "plain"
+folder_ids: []
+folder_title: null
 chat_name: "plain"
 chat_id: 5
 first_message_id: 1
@@ -10,6 +14,10 @@ exported_at: "<EXPORTED_AT>"
 ---
 
 ---
+type: note
+title: "has \"quotes\""
+folder_ids: []
+folder_title: null
 chat_name: "has \"quotes\""
 chat_id: 5
 first_message_id: 1
@@ -21,7 +29,11 @@ exported_at: "<EXPORTED_AT>"
 ---
 
 ---
-chat_name: "back\slash"
+type: note
+title: "back\\slash"
+folder_ids: []
+folder_title: null
+chat_name: "back\\slash"
 chat_id: 5
 first_message_id: 1
 last_message_id: 2
@@ -32,6 +44,10 @@ exported_at: "<EXPORTED_AT>"
 ---
 
 ---
+type: note
+title: "colon: value"
+folder_ids: []
+folder_title: null
 chat_name: "colon: value"
 chat_id: 5
 first_message_id: 1
@@ -43,6 +59,10 @@ exported_at: "<EXPORTED_AT>"
 ---
 
 ---
+type: note
+title: "# hash"
+folder_ids: []
+folder_title: null
 chat_name: "# hash"
 chat_id: 5
 first_message_id: 1
@@ -54,6 +74,10 @@ exported_at: "<EXPORTED_AT>"
 ---
 
 ---
+type: note
+title: "Привет 🌍"
+folder_ids: []
+folder_title: null
 chat_name: "Привет 🌍"
 chat_id: 5
 first_message_id: 1

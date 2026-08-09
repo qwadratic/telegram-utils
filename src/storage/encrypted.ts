@@ -1,3 +1,4 @@
+import { chmodSync } from 'node:fs'
 import { BaseSqliteStorageDriver, type ISqliteDatabase } from '@mtcute/core'
 import Database from 'better-sqlite3-multiple-ciphers'
 
@@ -17,6 +18,10 @@ export class EncryptedSqliteStorage extends BaseSqliteStorageDriver {
 
   _createDatabase(): ISqliteDatabase {
     const db = new Database(this._filename)
+    // Defence in depth: this file holds a full account credential, and 0644 on
+    // a session db is exactly the bug that was found on tg-saved. sqlite3
+    // creates at 0644 minus umask, so narrow it immediately after open.
+    chmodSync(this._filename, 0o600)
     try {
       // Set encryption key before any other operations
       // Escape single quotes in password for SQL pragma safety

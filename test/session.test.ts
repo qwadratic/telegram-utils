@@ -1,11 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import Database from 'better-sqlite3-multiple-ciphers'
 import { acquireLock, LockHeldError, LOCK_PATH } from '../src/session/lock.js'
-import { peerCacheStats } from '../src/session/cache.js'
+import { peerCacheStats, SESSION_DB_PATH } from '../src/session/cache.js'
+import { EncryptedSqliteStorage } from '../src/storage/encrypted.js'
 import { folderStatuses, relativeTime } from '../src/folders/status.js'
 import { readSecret } from '../src/session/psst.js'
 import { canPrompt } from '../src/session/index.js'
@@ -192,4 +193,20 @@ test('TGU_NON_INTERACTIVE gates prompting, and the old name is dead', () => {
     if (tty) Object.defineProperty(process.stdin, 'isTTY', tty)
     else delete (process.stdin as { isTTY?: boolean }).isTTY
   }
+})
+
+test('the session database is created 0600, never 0644', async () => {
+  // 0644 on a session cache is precisely the bug found on tg-saved's
+  // telegram.session.db, and this file holds a full account credential:
+  // whoever reads it is logged in, no password, no 2FA in the way.
+  await withTempDir(async () => {
+    mkdirSync('data', { recursive: true })
+    const storage = new EncryptedSqliteStorage(SESSION_DB_PATH, 'test-key')
+    const db = storage._createDatabase() as unknown as { close: () => void }
+    try {
+      assert.equal(statSync(SESSION_DB_PATH).mode & 0o777, 0o600)
+    } finally {
+      db.close()
+    }
+  })
 })

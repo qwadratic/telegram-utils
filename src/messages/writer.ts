@@ -1,9 +1,9 @@
-import { writeFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Message } from '@mtcute/node'
 import { ensureArchiveDir, getArchivePath } from '../utils/archive-path.js'
+import { writeFileAtomic } from '../utils/atomic.js'
 import { formatMessage } from './format.js'
-import { buildEmptyFrontmatter, buildFrontmatter } from './frontmatter.js'
+import { buildEmptyFrontmatter, buildFrontmatter, type FolderRef } from './frontmatter.js'
 import { sortMessagesChronological } from './sort.js'
 
 function buildMessageBody(messages: Message[]): string {
@@ -26,18 +26,21 @@ function buildMessageBody(messages: Message[]): string {
  * @param chatName - Display name of the chat
  * @param chatId - Numeric chat ID
  * @param messages - Array of messages to write (can be in any order)
+ * @param folders - Tracked folders this chat belongs to; stamped into
+ *   frontmatter as the shipper's routing key
  * @returns Counts of files and messages written
  */
 export async function writeChatFile(
   chatName: string,
   chatId: number,
-  messages: Message[]
+  messages: Message[],
+  folders: FolderRef[] = []
 ): Promise<{ filesWritten: number; messagesWritten: number }> {
   // Create an empty file if no messages
   if (messages.length === 0) {
     const filePath = getArchivePath(chatName, chatId)
-    const content = `${buildEmptyFrontmatter(chatName, chatId)}No messages.\n`
-    writeFileSync(filePath, content, 'utf-8')
+    const content = `${buildEmptyFrontmatter(chatName, chatId, folders)}No messages.\n`
+    writeFileAtomic(filePath, content)
     return { filesWritten: 1, messagesWritten: 0 }
   }
 
@@ -56,11 +59,12 @@ export async function writeChatFile(
     lastMsgId,
     orderedMessages.length,
     minDate,
-    maxDate
+    maxDate,
+    folders
   )
   content += buildMessageBody(orderedMessages)
 
-  writeFileSync(filePath, content, 'utf-8')
+  writeFileAtomic(filePath, content)
 
   return { filesWritten: 1, messagesWritten: orderedMessages.length }
 }
@@ -73,8 +77,6 @@ export function writeCombinedArchiveFile(
   content: string
 ): string {
   const filePath = join(ensureArchiveDir(), fileName)
-  const tempPath = `${filePath}.tmp`
-  writeFileSync(tempPath, content, 'utf-8')
-  renameSync(tempPath, filePath)
+  writeFileAtomic(filePath, content)
   return filePath
 }

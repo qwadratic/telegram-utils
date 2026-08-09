@@ -114,6 +114,11 @@ crash is reclaimed automatically once its pid is gone.
 - `tgu export historical [--cutoff <value>]` - combined historical export (cutoff optional, exclusive)
 - `tgu folders list [--json]` - folders already synced, most recently updated first
 - `tgu folders update [--folder <id> | --all]` - re-export one folder, or every folder stalest-first
+- `tgu ship [--dry-run] [--all]` - capture new archive files into gbrain. Runs
+  AFTER an export has exited, never during: it is a separate process that holds
+  no Telegram credential. Needs `TGU_BRAIN_MAP="<folderId>=<gbrainSource>,..."`;
+  a file whose folder is unmapped fails the run rather than picking a brain.
+  See `deploy/README.md`.
 
 Notes:
 

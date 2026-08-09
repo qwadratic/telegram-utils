@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily telegram-utils export + gbrain ship
+
+[Timer]
+# Odd minute per the house cron-stagger rule: nothing else on the host wakes
+# at :00. Persistent=true runs a missed pass after a reboot instead of
+# skipping a day, which matters because a skipped day is a gap in the archive.
+OnCalendar=*-*-* 04:17:00
+Persistent=true
+Unit=tgu.service
+
+[Install]
+WantedBy=timers.target

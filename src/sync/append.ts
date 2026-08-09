@@ -1,9 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import type { Message } from '@mtcute/node'
 import { formatMessage } from '../messages/format.js'
-import { buildFrontmatter, updateFrontmatter } from '../messages/frontmatter.js'
+import { buildFrontmatter, updateFrontmatter, type FolderRef } from '../messages/frontmatter.js'
 import { sortMessagesChronological } from '../messages/sort.js'
 import { getArchivePath } from '../utils/archive-path.js'
+import { writeFileAtomic } from '../utils/atomic.js'
 
 /**
  * Result of appending messages to a monthly file.
@@ -30,7 +31,8 @@ function updateFrontmatterAndAppend(
   newLastMsgId: number,
   newMessageCount: number,
   newMinDate: string,
-  newMaxDate: string
+  newMaxDate: string,
+  folders: FolderRef[]
 ): string {
   // Match frontmatter block
   const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/
@@ -48,7 +50,8 @@ function updateFrontmatterAndAppend(
     newLastMsgId,
     newMessageCount,
     newMinDate,
-    newMaxDate
+    newMaxDate,
+    folders
   })
 
   return `---\n${updatedFrontmatter}\n---\n${body}${newMessages}`
@@ -67,7 +70,8 @@ function updateFrontmatterAndAppend(
 export function appendToChatFile(
   chatName: string,
   chatId: number,
-  messages: Message[]
+  messages: Message[],
+  folders: FolderRef[] = []
 ): AppendResult {
   // Skip if no messages
   if (messages.length === 0) {
@@ -91,12 +95,13 @@ export function appendToChatFile(
       lastMsgId,
       orderedMessages.length,
       minDate,
-      maxDate
+      maxDate,
+      folders
     )
     for (const msg of orderedMessages) {
       content += formatMessage(msg)
     }
-    writeFileSync(filePath, content, 'utf-8')
+    writeFileAtomic(filePath, content)
 
     return { messagesAppended: orderedMessages.length, fileCreated: true }
   }
@@ -124,11 +129,12 @@ export function appendToChatFile(
     newLastMsgId,
     orderedMessages.length,
     newMinDate,
-    newMaxDate
+    newMaxDate,
+    folders
   )
 
   // Write updated content
-  writeFileSync(filePath, updatedContent, 'utf-8')
+  writeFileAtomic(filePath, updatedContent)
 
   return { messagesAppended: messages.length, fileCreated: false }
 }

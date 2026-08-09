@@ -1,0 +1,281 @@
+/**
+ * `tgu ship` - the gbrain side of the security boundary.
+ *
+ * Two things are being defended here. First, that the loop is idempotent:
+ * gbrain enforces UNIQUE (source_id, slug), so a stable slug is the whole
+ * dedup mechanism and a drifting one would silently fork every page. Second,
+ * that this code path never learns anything about Telegram - asserted by
+ * walking the real import graph, not by reading the file and hoping.
+ */
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync, utimesSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { parseBrainMap, planShip, readFolderIds, ship, slugForFile, ShipError } from '../src/ship/index.js'
+import { withTempDir } from './helpers.js'
+
+const SRC = fileURLToPath(new URL('../src/', import.meta.url))
+
+// Every test writes into its own temp dir, but the heartbeat path defaults to
+// the real ~/.gbrain. Redirect it once, here, so the suite never appends a
+// line to a human's actual brain.
+process.env.TGU_HEARTBEAT_PATH = join(mkdtempSync(join(tmpdir(), 'tgu-beat-')), 'heartbeat.jsonl')
+
+function page(folderIds: string, body = 'hello'): string {
+  return `---\ntype: note\ntitle: "T"\nchat_id: 1\nfolder_ids: ${folderIds}\n---\n\n${body}\n`
+}
+
+/**
+ * Write an archive page dated two seconds ago.
+ *
+ * The ingester exits before the shipper starts, so in production every file
+ * predates the run. Writing one in the same millisecond as `Date.now()` would
+ * exercise the deliberate re-ship at the rounding edge, not the normal path.
+ */
+function writePage(path: string, folderIds: string, body = 'hello'): void {
+  writeFileSync(path, page(folderIds, body))
+  const twoSecondsAgo = Date.now() / 1000 - 2
+  utimesSync(path, twoSecondsAgo, twoSecondsAgo)
+}
+
+/**
+ * A gbrain stand-in that records argv and stdin.
+ *
+ * Recording rather than asserting inline: what matters is that the SAME slug
+ * comes back on a second run, which can only be checked by comparing two runs.
+ */
+function fakeGbrain(dir: string, exitCode = 0): string {
+  const bin = join(dir, 'fake-gbrain')
+  const log = join(dir, 'calls.jsonl')
+  writeFileSync(bin, [
+    '#!/usr/bin/env node',
+    "const { appendFileSync, readFileSync } = require('node:fs')",
+    `appendFileSync(${JSON.stringify(log)}, JSON.stringify({`,
+    '  argv: process.argv.slice(2),',
+    "  stdin: readFileSync(0, 'utf-8')",
+    "}) + '\\n')",
+    `process.exit(${exitCode})`
+  ].join('\n'))
+  chmodSync(bin, 0o755)
+  return bin
+}
+
+function calls(dir: string): { argv: string[]; stdin: string }[] {
+  const log = join(dir, 'calls.jsonl')
+  if (!existsSync(log)) return []
+  return readFileSync(log, 'utf-8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line))
+}
+
+test('eval-40 the slug is derived from the archive filename and is byte-stable', () => {
+  const names = [
+    'simple-chat_1.md',
+    'project-ada-notes_2.md',
+    'привет-мир-🌍_8.md',
+    'chat_7.md',
+    `${'x'.repeat(190)}_9.md`
+  ]
+  assert.deepEqual(
+    names.map(slugForFile),
+    [
+      'tg/chat/simple-chat_1',
+      'tg/chat/project-ada-notes_2',
+      'tg/chat/привет-мир-🌍_8',
+      'tg/chat/chat_7',
+      `tg/chat/${'x'.repeat(190)}_9`
+    ]
+  )
+  // Same name, different chat id: the id suffix keeps the slugs distinct.
+  assert.notEqual(slugForFile('ada_1.md'), slugForFile('ada_2.md'))
+})
+
+test('eval-41 folder_ids is read out of frontmatter, absent means empty', () => {
+  assert.deepEqual(readFolderIds(page('[7, 12]')), [7, 12])
+  assert.deepEqual(readFolderIds(page('[7]')), [7])
+  assert.deepEqual(readFolderIds(page('[]')), [])
+  assert.deepEqual(readFolderIds('---\nchat_id: 1\n---\n'), [])
+})
+
+test('eval-42 the brain map parses and rejects junk loudly', () => {
+  assert.deepEqual([...parseBrainMap('7=personal,12=proximata')], [[7, 'personal'], [12, 'proximata']])
+  assert.deepEqual([...parseBrainMap(undefined)], [])
+  assert.throws(() => parseBrainMap('personal'), ShipError)
+})
+
+test('eval-43 routing: one folder one brain, two folders two brains', async () => {
+  await withTempDir(async () => {
+    mkdirSync('archive', { recursive: true })
+    writeFileSync(join('archive', 'a_1.md'), page('[7]'))
+    writeFileSync(join('archive', 'b_2.md'), page('[12]'))
+    writeFileSync(join('archive', 'c_3.md'), page('[7, 12]'))
+
+    const plan = planShip({
+      archiveDir: 'archive',
+      since: 0,
+      brainMap: parseBrainMap('7=personal,12=proximata')
+    })
+    assert.deepEqual(plan.map((p) => [p.slug, p.sources]), [
+      ['tg/chat/a_1', ['personal']],
+      ['tg/chat/b_2', ['proximata']],
+      ['tg/chat/c_3', ['personal', 'proximata']]
+    ])
+  })
+})
+
+test('eval-44 an unroutable file fails loudly instead of defaulting to a brain', async () => {
+  await withTempDir(async () => {
+    mkdirSync('archive', { recursive: true })
+    writeFileSync(join('archive', 'orphan_9.md'), page('[]'))
+    assert.throws(
+      () => planShip({ archiveDir: 'archive', since: 0, brainMap: parseBrainMap('7=personal') }),
+      /no folder_ids/
+    )
+
+    writeFileSync(join('archive', 'orphan_9.md'), page('[99]'))
+    assert.throws(
+      () => planShip({ archiveDir: 'archive', since: 0, brainMap: parseBrainMap('7=personal') }),
+      /not in TGU_BRAIN_MAP/
+    )
+  })
+})
+
+test('eval-45 shipping twice is a no-op: same slug, same stdin, nothing re-sent', async () => {
+  await withTempDir(async (dir) => {
+    mkdirSync('archive', { recursive: true })
+    writePage(join('archive', 'a_1.md'), '[7]')
+    const opts = {
+      archiveDir: 'archive',
+      brainMap: parseBrainMap('7=personal'),
+      gbrainBin: fakeGbrain(dir)
+    }
+
+    const first = ship(opts)
+    assert.deepEqual(first, { shipped: 1, captures: 1 })
+    assert.equal(calls(dir).length, 1)
+    assert.deepEqual(calls(dir)[0].argv, [
+      'capture', '--stdin', '--slug', 'tg/chat/a_1', '--source', 'personal', '--quiet'
+    ])
+
+    // Second run: the watermark has moved past the file, so nothing is sent.
+    assert.deepEqual(ship(opts), { shipped: 0, captures: 0 })
+    assert.equal(calls(dir).length, 1)
+
+    // --all re-sends it, and byte-for-byte the same payload under the same
+    // slug: gbrain's UNIQUE (source_id, slug) turns that into an update.
+    assert.deepEqual(ship({ ...opts, all: true }), { shipped: 1, captures: 1 })
+    const [before, after] = calls(dir)
+    assert.deepEqual(before, after)
+  })
+})
+
+test('eval-46 a non-zero gbrain exit aborts the run and leaves the watermark alone', async () => {
+  await withTempDir(async (dir) => {
+    mkdirSync('archive', { recursive: true })
+    writeFileSync(join('archive', 'a_1.md'), page('[7]'))
+    const stamp = join('archive', '.last-ship')
+    writeFileSync(stamp, '')
+    // Watermark deliberately in the past so the file is in scope.
+    utimesSync(stamp, 1, 1)
+
+    assert.throws(
+      () => ship({
+        archiveDir: 'archive',
+        brainMap: parseBrainMap('7=personal'),
+        gbrainBin: fakeGbrain(dir, 3)
+      }),
+      /exited 3/
+    )
+    assert.equal(statSync(stamp).mtimeMs, 1000, 'a failed run must not advance the watermark')
+  })
+})
+
+test('eval-47 --dry-run execs nothing and moves no watermark', async () => {
+  await withTempDir(async (dir) => {
+    mkdirSync('archive', { recursive: true })
+    writeFileSync(join('archive', 'a_1.md'), page('[7]'))
+
+    const result = ship({
+      archiveDir: 'archive',
+      dryRun: true,
+      brainMap: parseBrainMap('7=personal'),
+      gbrainBin: fakeGbrain(dir)
+    })
+    assert.deepEqual(result, { shipped: 1, captures: 1 })
+    assert.equal(calls(dir).length, 0)
+    assert.equal(existsSync(join('archive', '.last-ship')), false)
+  })
+})
+
+/**
+ * The mechanical half of security rule 2: nothing talking to gbrain may hold
+ * a Telegram credential. A grep of one file would miss a credential reached
+ * three imports deep, so this walks the whole closure.
+ */
+test('eval-48 the ship import graph contains no session, client or mtcute module', () => {
+  const seen = new Set<string>()
+  const queue = [resolve(SRC, 'ship/index.ts'), resolve(SRC, 'cli/commands/ship.ts')]
+
+  while (queue.length > 0) {
+    const file = queue.pop() as string
+    if (seen.has(file)) continue
+    seen.add(file)
+
+    const source = readFileSync(file, 'utf-8')
+    for (const match of source.matchAll(/from\s+'([^']+)'/g)) {
+      const spec = match[1]
+      if (!spec.startsWith('.')) {
+        assert.ok(
+          !spec.includes('mtcute'),
+          `${file} imports ${spec}: the gbrain path must not link the Telegram client`
+        )
+        continue
+      }
+      queue.push(resolve(dirname(file), spec.replace(/\.js$/, '.ts')))
+    }
+  }
+
+  for (const file of seen) {
+    assert.ok(
+      !/\/(session|client\.ts|storage)/.test(file.slice(SRC.length - 1)),
+      `${file} is reachable from ship: the gbrain path must not import the session layer`
+    )
+    assert.ok(
+      !/TG_[A-Z_]+|readSecret|SESSION_DB_PATH/.test(readFileSync(file, 'utf-8')),
+      `${file} is reachable from ship and names a Telegram secret`
+    )
+  }
+})
+
+test('eval-49 every run appends exactly one heartbeat line, success or failure', async () => {
+  await withTempDir(async (dir) => {
+    mkdirSync('archive', { recursive: true })
+    writePage(join('archive', 'a_1.md'), '[7]')
+    const beat = join(dir, 'heartbeat.jsonl')
+    const previous = process.env.TGU_HEARTBEAT_PATH
+    process.env.TGU_HEARTBEAT_PATH = beat
+
+    try {
+      ship({ archiveDir: 'archive', brainMap: parseBrainMap('7=personal'), gbrainBin: fakeGbrain(dir) })
+      writePage(join('archive', 'b_2.md'), '[99]')
+      assert.throws(() => ship({
+        archiveDir: 'archive',
+        all: true,
+        brainMap: parseBrainMap('7=personal'),
+        gbrainBin: fakeGbrain(dir)
+      }))
+    } finally {
+      process.env.TGU_HEARTBEAT_PATH = previous
+    }
+
+    const lines = readFileSync(beat, 'utf-8').trim().split('\n').map((l) => JSON.parse(l))
+    assert.equal(lines.length, 2)
+    assert.deepEqual(lines.map((l) => l.status), ['ok', 'error'])
+    for (const line of lines) {
+      assert.match(line.ts, /^\d{4}-\d{2}-\d{2}T/)
+      assert.equal(line.event, 'ship')
+      assert.ok(line.source_version, 'a heartbeat with no version cannot be traced to a build')
+      assert.ok(line.details, 'a heartbeat with no details says nothing')
+    }
+  })
+})

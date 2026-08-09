@@ -10,9 +10,13 @@
 import type { Message } from '@mtcute/node'
 import { makeMessage } from '../helpers.js'
 import type { SyncState } from '../../src/sync/state.js'
+import type { FolderRef } from '../../src/messages/frontmatter.js'
 
 export const CHAT_ID = -1001234567890
 export const CHAT_NAME = 'Project "Ada" / notes'
+
+/** The routing key stamped into frontmatter; matches folder 7 in seededState. */
+export const FOLDERS: FolderRef[] = [{ id: 7, title: 'Work' }]
 
 /** A conversation exercising forward, reply-with-quote, and plain text. */
 export const CONVERSATION: Message[] = [

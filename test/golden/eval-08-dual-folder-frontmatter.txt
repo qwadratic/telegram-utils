@@ -1,0 +1,12 @@
+type: note
+title: "Dual Member"
+folder_ids: [7, 12]
+folder_title: "Work"
+chat_name: "Dual Member"
+chat_id: 10
+first_message_id: 101
+last_message_id: 103
+message_count: 3
+min_date: "2026-01-04T09:15:30.000Z"
+max_date: "2026-01-05T18:02:11.000Z"
+exported_at: "<EXPORTED_AT>"

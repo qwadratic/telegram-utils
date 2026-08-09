@@ -1,4 +1,8 @@
 ---
+type: note
+title: "Project \"Ada\" / notes"
+folder_ids: [7]
+folder_title: "Work"
 chat_name: "Project \"Ada\" / notes"
 chat_id: -1001234567890
 first_message_id: 101

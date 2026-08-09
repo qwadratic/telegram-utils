@@ -1,4 +1,8 @@
 ---
+type: note
+title: "Silent Chat"
+folder_ids: []
+folder_title: null
 chat_name: "Silent Chat"
 chat_id: 77
 first_message_id: null

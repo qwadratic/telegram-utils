@@ -3,6 +3,8 @@ import { spinner } from '@clack/prompts'
 import type { Config } from '../config/index.js'
 import { fetchMessages, sleep } from './fetch.js'
 import { writeChatFile } from './writer.js'
+import { foldersForChat } from '../folders/status.js'
+import { loadState } from '../sync/state.js'
 
 /**
  * Result from a complete export operation.
@@ -59,6 +61,7 @@ export async function exportChats(
   let chatsSkipped = 0
   let messagesExported = 0
 
+  const state = loadState()
   const s = spinner()
   s.start(`Exporting 0 of ${totalChats} chats...`)
 
@@ -95,8 +98,15 @@ export async function exportChats(
       chatsSkipped++
     }
 
-    // Write to per-chat file (handles empty chats)
-    const { messagesWritten } = await writeChatFile(chatName, chatId, messages)
+    // Write to per-chat file (handles empty chats). Folder membership comes
+    // from the sync state so the page carries its routing key even on a
+    // one-shot export that never touched the incremental path.
+    const { messagesWritten } = await writeChatFile(
+      chatName,
+      chatId,
+      messages,
+      foldersForChat(state, chatId)
+    )
 
     chatsExported++
     messagesExported += messagesWritten

@@ -15,15 +15,20 @@
 import { test } from 'node:test'
 import assert from 'node:assert'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { assertGolden, withTempDir } from './helpers.js'
-import { AWKWARD_NAMES, CHAT_ID, CHAT_NAME, CONVERSATION, UNSORTED, seededState } from './fixtures/corpus.js'
+import { AWKWARD_NAMES, CHAT_ID, CHAT_NAME, CONVERSATION, FOLDERS, UNSORTED, seededState } from './fixtures/corpus.js'
 import { writeChatFile } from '../src/messages/writer.js'
-import { buildFrontmatter, buildRecencyFrontmatter, updateFrontmatter } from '../src/messages/frontmatter.js'
+import {
+  buildFrontmatter,
+  buildRecencyFrontmatter,
+  getFrontmatterValue,
+  updateFrontmatter
+} from '../src/messages/frontmatter.js'
 import { sanitizeFilename } from '../src/utils/filename.js'
 import { getArchivePath } from '../src/utils/archive-path.js'
 import { loadState, saveState, updateChatState, updateFolderState, STATE_PATH, type SyncState } from '../src/sync/state.js'
-import { folderStatuses } from '../src/folders/status.js'
+import { folderStatuses, foldersForChat } from '../src/folders/status.js'
 import { acquireLock, LockHeldError, LOCK_PATH } from '../src/session/lock.js'
 
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
@@ -51,7 +56,7 @@ function renderState(state: SyncState): string {
 test('eval-01 a chat file is frontmatter plus chronological body', async () => {
   await withTempDir(async () => {
     // Fed out of order on purpose: sorting is part of the frozen behaviour.
-    await writeChatFile(CHAT_NAME, CHAT_ID, UNSORTED)
+    await writeChatFile(CHAT_NAME, CHAT_ID, UNSORTED, FOLDERS)
     assertGolden('eval-01-chat-file', readFileSync(getArchivePath(CHAT_NAME, CHAT_ID), 'utf-8'))
   })
 })
@@ -63,12 +68,71 @@ test('eval-02 a chat with no messages still gets a file', async () => {
   })
 })
 
+const HOSTILE_NAMES = ['plain', 'has "quotes"', 'back\\slash', 'colon: value', '# hash', 'Привет 🌍']
+
 test('eval-03 chat names are escaped into YAML, never truncated', () => {
-  const names = ['plain', 'has "quotes"', 'back\\slash', 'colon: value', '# hash', 'Привет 🌍']
-  const rendered = names
+  const rendered = HOSTILE_NAMES
     .map((name) => buildFrontmatter(name, 5, 1, 2, 2, '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z'))
     .join('')
   assertGolden('eval-03-frontmatter-escaping', rendered)
+})
+
+test('eval-06 a hostile chat name survives the round trip through frontmatter', () => {
+  // The escape is only worth anything if it reverses. A backslash that is
+  // written but not escaped makes the whole YAML document unparseable, and
+  // gbrain would reject the page - or worse, silently retype it.
+  for (const name of HOSTILE_NAMES) {
+    const rendered = buildFrontmatter(name, 5, 1, 2, 2, '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z')
+    assert.equal(getFrontmatterValue(rendered, 'chat_name'), name)
+    assert.equal(getFrontmatterValue(rendered, 'title'), name)
+  }
+})
+
+test('eval-07 type is the literal string note', () => {
+  // Asserted literally, not against a set: one of the 15 types in
+  // gbrain-base-v2.yaml. Anything else is silently retyped with legacy_type
+  // and the drift is invisible in production.
+  const rendered = buildFrontmatter('x', 1, 1, 1, 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')
+  assert.match(rendered, /^type: note$/m)
+})
+
+test('eval-08 a chat in two folders renders both ids and is exported once', async () => {
+  await withTempDir(async () => {
+    const state = seededState()
+    // Chat 10 is already in folder 7; put it in folder 12 as well.
+    updateFolderState(state, 12, [99, 10], 'Untouched')
+    const folders = foldersForChat(state, 10)
+
+    await writeChatFile('Dual Member', 10, CONVERSATION, folders)
+    const files = readdirSync('data/archive')
+    assert.deepEqual(files, ['dual-member_10.md'], 'dual membership must not duplicate the export')
+    assertGolden(
+      'eval-08-dual-folder-frontmatter',
+      readFileSync(getArchivePath('Dual Member', 10), 'utf-8').split('---\n')[1]
+    )
+  })
+})
+
+test('eval-09 an append backfills the gbrain fields onto a pre-TASK-5 file', () => {
+  const legacy = [
+    'chat_name: "Legacy Chat"',
+    'chat_id: 202',
+    'first_message_id: 1',
+    'last_message_id: 2',
+    'message_count: 2',
+    'min_date: "2026-01-01T00:00:00.000Z"',
+    'max_date: "2026-01-02T00:00:00.000Z"',
+    'exported_at: "2026-01-02T00:00:00.000Z"'
+  ].join('\n')
+  const upgraded = updateFrontmatter({
+    frontmatter: legacy,
+    newLastMsgId: 3,
+    newMessageCount: 1,
+    newMinDate: '2026-01-03T00:00:00.000Z',
+    newMaxDate: '2026-01-03T00:00:00.000Z',
+    folders: FOLDERS
+  })
+  assertGolden('eval-09-legacy-frontmatter-upgrade', `${upgraded}\n`)
 })
 
 test('eval-04 recency frontmatter distinguishes recent from historical', () => {
@@ -230,11 +294,47 @@ test('eval-25 an empty or unparseable lock file is reclaimed', async () => {
   })
 })
 
+// --------------------------------------------- atomic writes and file modes
+
+test('eval-26 a chat write leaves no .tmp residue', async () => {
+  await withTempDir(async () => {
+    await writeChatFile(CHAT_NAME, CHAT_ID, CONVERSATION, FOLDERS)
+    assert.deepEqual(
+      readdirSync('data/archive').filter((name) => name.endsWith('.tmp')),
+      [],
+      'temp+rename must clean up after itself'
+    )
+  })
+})
+
+test('eval-27 an interrupted write leaves the previous file intact', async () => {
+  await withTempDir(async () => {
+    await writeChatFile(CHAT_NAME, CHAT_ID, CONVERSATION, FOLDERS)
+    const path = getArchivePath(CHAT_NAME, CHAT_ID)
+    const complete = readFileSync(path, 'utf-8')
+
+    // Simulate a crash between the temp write and the rename: the staging
+    // file exists and is half-written, the target must be untouched.
+    writeFileSync(`${path}.tmp`, '---\ntype: no')
+    assert.equal(readFileSync(path, 'utf-8'), complete)
+  })
+})
+
+test('eval-28 sync-state is created 0600', async () => {
+  await withTempDir(async () => {
+    saveState(seededState())
+    assert.equal(statSync(STATE_PATH).mode & 0o777, 0o600)
+    // Re-saving over an existing file must not widen it back out.
+    saveState(seededState())
+    assert.equal(statSync(STATE_PATH).mode & 0o777, 0o600)
+  })
+})
+
 test('no eval creates a session database', async () => {
   // The corpus is fixture-only by construction: nothing here opens a client.
   // This is the mechanical check that it stays that way.
   await withTempDir(async (dir) => {
-    await writeChatFile(CHAT_NAME, CHAT_ID, CONVERSATION)
+    await writeChatFile(CHAT_NAME, CHAT_ID, CONVERSATION, FOLDERS)
     const release = acquireLock()
     release()
     assert.equal(

@@ -1,0 +1,31 @@
+[Unit]
+Description=telegram-utils: export tracked Telegram folders, then ship them into gbrain
+Documentation=https://github.com/qwadratic/telegram-utils
+
+[Service]
+Type=oneshot
+User=tgu
+Group=tgu
+WorkingDirectory=/srv/tgu
+# All four data paths are cwd-relative by design (data/session.db,
+# data/session.lock, data/config.json, data/archive/), so WorkingDirectory
+# is the whole configuration. /srv/tgu is 0700 tgu:tgu.
+Environment=TGU_NON_INTERACTIVE=1
+# folderId=gbrainSource, e.g. TGU_BRAIN_MAP=7=personal,12=proximata
+# A file whose folder is not in this map fails the run rather than guessing.
+EnvironmentFile=-/etc/tgu.env
+
+# Two processes, in this order, and the unit aborts on the first non-zero
+# exit. Step 1 holds a full Telegram account credential and never calls
+# gbrain; step 2 talks to gbrain and never sees a Telegram credential. The
+# separation is a process boundary, not a coding convention.
+ExecStart=/usr/local/bin/tgu export chats
+ExecStart=/usr/local/bin/tgu ship
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+# /srv/tgu holds the archive and the credential store; ~tgu/.gbrain is where
+# gbrain keeps its own config, locks and the ship heartbeat. Both must be
+# writable, and under ProtectSystem=strict nothing else is.
+ReadWritePaths=/srv/tgu /home/tgu

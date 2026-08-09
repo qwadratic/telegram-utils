@@ -1,3 +1,55 @@
+/**
+ * A Telegram folder this chat belongs to.
+ *
+ * `id` is the routing key the shipper greps to pick a destination brain;
+ * `title` is display only. Dual membership is a list, not a duplicate export.
+ */
+export interface FolderRef {
+  id: number
+  title: string
+}
+
+/**
+ * The gbrain page type. MUST be one of the 15 in gbrain-base-v2.yaml.
+ *
+ * Anything else is silently retyped with a `legacy_type` field, and that
+ * drift is invisible in production - which is why this is a frozen constant
+ * and the eval asserts the literal string, not membership of a set.
+ */
+export const GBRAIN_PAGE_TYPE = 'note'
+
+/**
+ * Quote a value as a YAML double-quoted scalar.
+ *
+ * The backslash MUST be escaped before the quote, and it must be escaped at
+ * all: inside a YAML double-quoted scalar `\s` is an unknown escape and the
+ * whole document fails to parse. A chat literally named `back\slash` was
+ * enough to make the file an invalid gbrain page.
+ */
+function yamlQuote(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+/** `[7, 12]`, or `[]` for a chat in no tracked folder - never omitted. */
+function yamlIdList(folders: FolderRef[]): string {
+  return `[${folders.map((folder) => folder.id).join(', ')}]`
+}
+
+/**
+ * The four fields that turn an archive file into a valid gbrain page.
+ *
+ * `folder_title` is the FIRST folder's title and is display only; routing
+ * reads `folder_ids`, which carries every membership.
+ */
+function gbrainFields(chatName: string, folders: FolderRef[]): string[] {
+  return [
+    `type: ${GBRAIN_PAGE_TYPE}`,
+    `title: ${yamlQuote(chatName)}`,
+    `folder_ids: ${yamlIdList(folders)}`,
+    `folder_title: ${folders.length > 0 ? yamlQuote(folders[0].title) : 'null'}`
+  ]
+}
+
 function buildFrontmatterBlock(lines: string[]): string {
   return `---\n${lines.join('\n')}\n---\n\n`
 }
@@ -12,6 +64,7 @@ function buildFrontmatterBlock(lines: string[]): string {
  * @param messageCount - Total messages in this file
  * @param minDate - Earliest message date (ISO 8601)
  * @param maxDate - Latest message date (ISO 8601)
+ * @param folders - Tracked folders this chat belongs to (the routing key)
  * @returns YAML frontmatter string including the trailing newlines
  */
 export function buildFrontmatter(
@@ -21,14 +74,14 @@ export function buildFrontmatter(
   lastMsgId: number,
   messageCount: number,
   minDate: string,
-  maxDate: string
+  maxDate: string,
+  folders: FolderRef[] = []
 ): string {
   const now = new Date().toISOString()
-  // Escape quotes in chat name with backslash
-  const escapedName = chatName.replace(/"/g, '\\"')
 
   return buildFrontmatterBlock([
-    `chat_name: "${escapedName}"`,
+    ...gbrainFields(chatName, folders),
+    `chat_name: ${yamlQuote(chatName)}`,
     `chat_id: ${chatId}`,
     `first_message_id: ${firstMsgId}`,
     `last_message_id: ${lastMsgId}`,
@@ -42,12 +95,16 @@ export function buildFrontmatter(
 /**
  * Create YAML frontmatter for an empty chat archive file.
  */
-export function buildEmptyFrontmatter(chatName: string, chatId: number): string {
+export function buildEmptyFrontmatter(
+  chatName: string,
+  chatId: number,
+  folders: FolderRef[] = []
+): string {
   const now = new Date().toISOString()
-  const escapedName = chatName.replace(/"/g, '\\"')
 
   return buildFrontmatterBlock([
-    `chat_name: "${escapedName}"`,
+    ...gbrainFields(chatName, folders),
+    `chat_name: ${yamlQuote(chatName)}`,
     `chat_id: ${chatId}`,
     'first_message_id: null',
     'last_message_id: null',
@@ -88,7 +145,9 @@ export function getFrontmatterValue(frontmatter: string, key: string): string | 
   const rawValue = match[1].trim()
   if (rawValue === 'null') return null
   if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-    return rawValue.slice(1, -1).replace(/\\"/g, '"')
+    // Inverse of yamlQuote: one pass, so `\\"` unescapes to `\` + `"` and not
+    // to a stray quote. A two-pass replace would corrupt exactly that case.
+    return rawValue.slice(1, -1).replace(/\\(["\\])/g, '$1')
   }
   return rawValue
 }
@@ -101,12 +160,44 @@ function upsertField(source: string, key: string, value: string): string {
   return `${source}\n${key}: ${value}`
 }
 
+/**
+ * Backfill the gbrain fields onto frontmatter written before they existed.
+ *
+ * Files already on disk predate TASK-5, so an append would otherwise leave
+ * them permanently unshippable. `title` falls back to the file's own
+ * `chat_name`, which is the only name an old file carries.
+ */
+function ensureGbrainFields(
+  frontmatter: string,
+  folders: FolderRef[] | undefined
+): string {
+  const chatName = getFrontmatterValue(frontmatter, 'chat_name') ?? 'Telegram chat'
+  let updated = upsertField(frontmatter, 'type', GBRAIN_PAGE_TYPE)
+  if (getFrontmatterValue(updated, 'title') === null) {
+    updated = upsertField(updated, 'title', yamlQuote(chatName))
+  }
+  // Folder membership is only rewritten when the caller actually knows it;
+  // a caller that does not must never blank an existing routing key.
+  if (folders) {
+    updated = upsertField(updated, 'folder_ids', yamlIdList(folders))
+    updated = upsertField(
+      updated,
+      'folder_title',
+      folders.length > 0 ? yamlQuote(folders[0].title) : 'null'
+    )
+  } else if (getFrontmatterValue(updated, 'folder_ids') === null) {
+    updated = upsertField(updated, 'folder_ids', '[]')
+  }
+  return updated
+}
+
 export function updateFrontmatter(options: {
   frontmatter: string
   newLastMsgId: number
   newMessageCount: number
   newMinDate: string
   newMaxDate: string
+  folders?: FolderRef[]
 }): string {
   const existingCount = Number(getFrontmatterValue(options.frontmatter, 'message_count') ?? 0)
   const existingMinDate = getFrontmatterValue(options.frontmatter, 'min_date')
@@ -119,7 +210,7 @@ export function updateFrontmatter(options: {
     ? new Date(existingMaxDate) > new Date(options.newMaxDate) ? existingMaxDate : options.newMaxDate
     : options.newMaxDate
 
-  let updatedFrontmatter = options.frontmatter
+  let updatedFrontmatter = ensureGbrainFields(options.frontmatter, options.folders)
   updatedFrontmatter = upsertField(updatedFrontmatter, 'last_message_id', String(options.newLastMsgId))
   updatedFrontmatter = upsertField(
     updatedFrontmatter,

@@ -12,6 +12,7 @@ import { registerExportSyncCommand } from './cli/commands/export-sync.js'
 import { registerExportRecentCommand } from './cli/commands/export-recent.js'
 import { registerExportHistoricalCommand } from './cli/commands/export-historical.js'
 import { registerCheckPhonesCommand } from './cli/commands/check-phones.js'
+import { registerShipCommand } from './cli/commands/ship.js'
 
 const program = new Command()
   .name('tgu')
@@ -35,5 +36,6 @@ registerExportRecentCommand(exportCommand)
 registerExportHistoricalCommand(exportCommand)
 
 registerCheckPhonesCommand(program)
+registerShipCommand(program)
 
 program.parse()
