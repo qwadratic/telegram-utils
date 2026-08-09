@@ -153,6 +153,11 @@ export async function syncChats(
   const uniqueChatIds = [...new Set(chatsToSync)]
 
   for (const chatId of uniqueChatIds) {
+    // ponytail: one unreachable peer used to abort the whole run (left folder, deleted
+    // account, blocked). Skip it and keep going; the watermark for that chat is simply
+    // not advanced, so a later run retries it. Ceiling: a chat that fails EVERY run stays
+    // silently absent. Upgrade path: count consecutive failures in sync-state and warn.
+    try {
     const chatName = await getChatName(tg, chatId)
     const existingChat = state.chats[chatId]
     const lastMsgId = existingChat?.lastMessageId
@@ -191,6 +196,11 @@ export async function syncChats(
 
     updateStateForChat(state, chatId, newestMsgId, chatName)
     saveState(state)
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      skippedChats.push(`${chatId} (unreachable: ${reason})`)
+      chatsSkipped++
+    }
   }
 
   saveState(state)
