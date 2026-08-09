@@ -2,7 +2,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
+import Database from 'better-sqlite3-multiple-ciphers'
 import { acquireLock, LockHeldError, LOCK_PATH } from '../src/session/lock.js'
+import { peerCacheStats } from '../src/session/cache.js'
 import { folderStatuses, relativeTime } from '../src/folders/status.js'
 import { readSecret } from '../src/session/psst.js'
 import { updateChatState, updateFolderState, type SyncState } from '../src/sync/state.js'
@@ -16,6 +19,40 @@ function emptyState(): SyncState {
     folders: {}
   }
 }
+
+test('peer cache reports mtcute timestamps as real dates', async () => {
+  await withTempDir(async (dir) => {
+    // A real encrypted db, because the sqlite read is the part that regressed.
+    const path = join(dir, 'session.db')
+    const key = 'test-key'
+    // mtcute writes `updated` in unix MILLISECONDS. Treating it as seconds
+    // dated the peer cache to the year 58562 in `session status`.
+    const updated = 1785889250803
+
+    const db = new Database(path)
+    db.pragma(`key='${key}'`)
+    db.exec('create table peers (id integer primary key, updated integer)')
+    db.prepare('insert into peers (id, updated) values (?, ?)').run(1, updated - 1000)
+    db.prepare('insert into peers (id, updated) values (?, ?)').run(2, updated)
+    db.close()
+
+    const stats = peerCacheStats(key, path)
+    assert.equal(stats.count, 2)
+    assert.equal(stats.lastUpdated, new Date(updated).toISOString())
+    // The actual bug: any scaling lands outside the range a clock can produce.
+    assert.ok(
+      new Date(stats.lastUpdated!).getUTCFullYear() < 3000,
+      `peer cache timestamp is not a plausible date: ${stats.lastUpdated}`
+    )
+  })
+})
+
+test('peer cache is empty, not a crash, when there is no db', () => {
+  assert.deepEqual(peerCacheStats('unused', 'definitely/missing.db'), {
+    count: 0,
+    lastUpdated: null
+  })
+})
 
 test('single-instance lock admits one holder and survives release', async () => {
   await withTempDir(async () => {

@@ -40,8 +40,9 @@ export function peerCacheStats(dbKey: string, path = SESSION_DB_PATH): PeerCache
     }
     return {
       count: row.count,
-      // mtcute stores `updated` as unix seconds.
-      lastUpdated: row.updated ? new Date(row.updated * 1000).toISOString() : null
+      // mtcute stores `updated` as unix *milliseconds*, not seconds. Scaling it
+      // again put `session status` about 56000 years into the future.
+      lastUpdated: row.updated ? new Date(row.updated).toISOString() : null
     }
   } finally {
     db.close()
