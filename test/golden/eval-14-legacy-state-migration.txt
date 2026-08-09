@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "chats": {
+    "10": {
+      "lastMessageId": 500,
+      "lastSyncedAt": "2026-01-05T18:00:00.000Z",
+      "chatName": "Ada"
+    }
+  },
+  "folders": {
+    "7": {
+      "chatIds": [
+        10
+      ],
+      "lastSyncedAt": "2026-01-05T18:00:00.000Z"
+    }
+  },
+  "recency": {
+    "recent": {
+      "cutoff": null,
+      "chats": {}
+    },
+    "historical": {
+      "cutoff": null,
+      "chats": {}
+    }
+  }
+}

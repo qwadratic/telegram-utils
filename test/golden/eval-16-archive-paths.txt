@@ -1,0 +1,18 @@
+"Simple Chat"
+  -> data/archive/simple-chat_1.md
+"Project \"Ada\" / notes"
+  -> data/archive/project-ada-notes_2.md
+"  spaced   out  "
+  -> data/archive/spaced-out_3.md
+"../../etc/passwd"
+  -> data/archive/....etcpasswd_4.md
+"trailing dots..."
+  -> data/archive/trailing-dots_5.md
+"<>:\"/\\|?*"
+  -> data/archive/chat_6.md
+""
+  -> data/archive/chat_7.md
+"Привет мир 🌍"
+  -> data/archive/привет-мир-🌍_8.md
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  -> data/archive/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_9.md

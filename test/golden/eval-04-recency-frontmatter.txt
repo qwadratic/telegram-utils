@@ -1,0 +1,20 @@
+---
+export_kind: "recent"
+cutoff_date: "2026-01-01"
+chats_with_messages: 2
+message_count: 3
+min_date: "2026-01-04T09:15:30.000Z"
+max_date: "2026-01-05T18:02:11.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+
+---
+export_kind: "historical"
+cutoff_date: null
+chats_with_messages: 0
+message_count: 0
+min_date: null
+max_date: null
+exported_at: "<EXPORTED_AT>"
+---
+

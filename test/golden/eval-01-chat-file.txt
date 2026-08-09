@@ -1,0 +1,33 @@
+---
+chat_name: "Project \"Ada\" / notes"
+chat_id: -1001234567890
+first_message_id: 101
+last_message_id: 103
+message_count: 3
+min_date: "2026-01-04T09:15:30.000Z"
+max_date: "2026-01-05T18:02:11.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+
+**[2026-01-04 09:15:30 UTC]** **Ada (@ada)** [id:101]
+
+Kickoff at ten.
+
+---
+
+**[2026-01-04 09:16:00 UTC]** **Grace** [id:102]
+
+> Forwarded from: Spec Channel
+
+Forwarding the spec.
+
+---
+
+**[2026-01-05 18:02:11 UTC]** **Ada (@ada)** [id:103]
+
+> In reply to [id:101]: "Kickoff at ten."
+
+Done.
+
+---
+

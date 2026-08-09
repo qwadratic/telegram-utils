@@ -1,0 +1,12 @@
+---
+chat_name: "Silent Chat"
+chat_id: 77
+first_message_id: null
+last_message_id: null
+message_count: 0
+min_date: null
+max_date: null
+exported_at: "<EXPORTED_AT>"
+---
+
+No messages.

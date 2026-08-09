@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "chats": {},
+  "recency": {
+    "recent": {
+      "cutoff": null,
+      "chats": {}
+    },
+    "historical": {
+      "cutoff": null,
+      "chats": {}
+    }
+  },
+  "folders": {}
+}

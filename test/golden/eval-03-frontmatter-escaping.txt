@@ -1,0 +1,66 @@
+---
+chat_name: "plain"
+chat_id: 5
+first_message_id: 1
+last_message_id: 2
+message_count: 2
+min_date: "2026-01-01T00:00:00.000Z"
+max_date: "2026-01-02T00:00:00.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+
+---
+chat_name: "has \"quotes\""
+chat_id: 5
+first_message_id: 1
+last_message_id: 2
+message_count: 2
+min_date: "2026-01-01T00:00:00.000Z"
+max_date: "2026-01-02T00:00:00.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+
+---
+chat_name: "back\slash"
+chat_id: 5
+first_message_id: 1
+last_message_id: 2
+message_count: 2
+min_date: "2026-01-01T00:00:00.000Z"
+max_date: "2026-01-02T00:00:00.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+
+---
+chat_name: "colon: value"
+chat_id: 5
+first_message_id: 1
+last_message_id: 2
+message_count: 2
+min_date: "2026-01-01T00:00:00.000Z"
+max_date: "2026-01-02T00:00:00.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+
+---
+chat_name: "# hash"
+chat_id: 5
+first_message_id: 1
+last_message_id: 2
+message_count: 2
+min_date: "2026-01-01T00:00:00.000Z"
+max_date: "2026-01-02T00:00:00.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+
+---
+chat_name: "Привет 🌍"
+chat_id: 5
+first_message_id: 1
+last_message_id: 2
+message_count: 2
+min_date: "2026-01-01T00:00:00.000Z"
+max_date: "2026-01-02T00:00:00.000Z"
+exported_at: "<EXPORTED_AT>"
+---
+

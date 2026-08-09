@@ -1,0 +1,4 @@
+"" -> reclaimed by pid <PID>
+"\n" -> reclaimed by pid <PID>
+"not-a-pid\n" -> reclaimed by pid <PID>
+"0\n" -> reclaimed by pid <PID>

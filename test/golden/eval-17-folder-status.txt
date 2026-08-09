@@ -1,0 +1,2 @@
+7 Work: 2/2 synced, last 2026-01-05T18:00:00.000Z, msg 500
+12 Untouched: 0/1 synced, last null, msg 0

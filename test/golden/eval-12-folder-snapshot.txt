@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "chats": {
+    "10": {
+      "lastMessageId": 500,
+      "lastSyncedAt": "2026-01-05T18:00:00.000Z",
+      "chatName": "Ada"
+    },
+    "11": {
+      "lastMessageId": 42,
+      "lastSyncedAt": "2026-01-02T08:00:00.000Z",
+      "chatName": "Grace"
+    }
+  },
+  "recency": {
+    "recent": {
+      "cutoff": "2026-01-01",
+      "chats": {}
+    },
+    "historical": {
+      "cutoff": null,
+      "chats": {}
+    }
+  },
+  "folders": {
+    "7": {
+      "chatIds": [
+        10,
+        11,
+        13
+      ],
+      "lastSyncedAt": "<NOW>",
+      "title": "Work"
+    },
+    "12": {
+      "chatIds": [
+        99
+      ],
+      "lastSyncedAt": "<NOW>",
+      "title": "Renamed"
+    },
+    "30": {
+      "chatIds": [
+        1
+      ],
+      "lastSyncedAt": "<NOW>"
+    }
+  }
+}

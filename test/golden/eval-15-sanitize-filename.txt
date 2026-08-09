@@ -1,0 +1,18 @@
+"Simple Chat"
+  -> simple-chat_1
+"Project \"Ada\" / notes"
+  -> project-ada-notes_2
+"  spaced   out  "
+  -> spaced-out_3
+"../../etc/passwd"
+  -> ....etcpasswd_4
+"trailing dots..."
+  -> trailing-dots_5
+"<>:\"/\\|?*"
+  -> chat_6
+""
+  -> chat_7
+"Привет мир 🌍"
+  -> привет-мир-🌍_8
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_9
