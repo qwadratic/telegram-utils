@@ -11,10 +11,12 @@ pnpm install
 psst init                              # local vault for this project
 psst set API_ID && psst set API_HASH   # or reuse TG_API_ID / TG_API_HASH from your global vault
 
-symbiotic-chats session login          # once, at a terminal: phone + code + 2FA
-symbiotic-chats setup                  # pick which Telegram folders to export
-symbiotic-chats export chats           # unattended from here on
+tgu session login    # once, at a terminal: phone + code + 2FA
+tgu setup            # pick which Telegram folders to export
+tgu export chats     # unattended from here on
 ```
+
+`tgu` and `telegram-utils` are the same command; `tgu` is what the examples type.
 
 After `session login` no command ever prompts for a password again, which is
 what makes cron jobs and agents possible.
@@ -51,7 +53,7 @@ string, so you can confirm two machines share a session without exposing it.
 
 ```sh
 psst get TG_SESSION_STRING | ssh host 'cd app && psst set TG_SESSION_STRING --stdin'
-ssh host 'cd app && symbiotic-chats session login --force'   # adopt it, discard any old cache
+ssh host 'cd app && tgu session login --force'   # adopt it, discard any old cache
 ```
 
 Revoke a leaked session in Telegram under Settings > Privacy & Security >
@@ -74,7 +76,7 @@ crash is reclaimed automatically once its pid is gone.
 
 ## Automation
 
-- `SYMBIOTIC_NON_INTERACTIVE=1` turns "ask the user" into a clear failure. Set it
+- `TGU_NON_INTERACTIVE=1` turns "ask the user" into a clear failure. Set it
   in cron jobs and agent runs, which often have a pty and would otherwise hang
   forever on a phone-number prompt.
 - `--json` on `folders list` and `session status` is machine-readable; stdout
@@ -107,11 +109,11 @@ crash is reclaimed automatically once its pid is gone.
 
 ## Commands (MVP)
 
-- `symbiotic-chats export chats` - export chats into per-chat archives
-- `symbiotic-chats export recent --cutoff <value>` - combined recent export (cutoff required, inclusive)
-- `symbiotic-chats export historical [--cutoff <value>]` - combined historical export (cutoff optional, exclusive)
-- `symbiotic-chats folders list [--json]` - folders already synced, most recently updated first
-- `symbiotic-chats folders update [--folder <id> | --all]` - re-export one folder, or every folder stalest-first
+- `tgu export chats` - export chats into per-chat archives
+- `tgu export recent --cutoff <value>` - combined recent export (cutoff required, inclusive)
+- `tgu export historical [--cutoff <value>]` - combined historical export (cutoff optional, exclusive)
+- `tgu folders list [--json]` - folders already synced, most recently updated first
+- `tgu folders update [--folder <id> | --all]` - re-export one folder, or every folder stalest-first
 
 Notes:
 

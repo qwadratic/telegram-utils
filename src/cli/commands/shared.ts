@@ -51,7 +51,7 @@ export async function resolveExportConfig(tg: TelegramClient) {
   const refreshed = await refreshTrackedChats(tg, config)
   const totalChats = refreshed.config.trackedChatIds.length
   if (totalChats === 0) {
-    logWarning('No chats found in selected folders. Run "symbiotic-chats setup --select" to update selection.')
+    logWarning('No chats found in selected folders. Run "tgu setup --select" to update selection.')
     return null
   }
 

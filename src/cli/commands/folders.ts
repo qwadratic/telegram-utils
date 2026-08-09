@@ -44,7 +44,7 @@ export function registerFoldersCommand(program: Command): void {
           return
         }
         if (statuses.length === 0) {
-          logWarning('No folders tracked yet. Run "symbiotic-chats setup" to select some.')
+          logWarning('No folders tracked yet. Run "tgu setup" to select some.')
           return
         }
         renderTable(statuses, Date.now())
@@ -60,7 +60,7 @@ export function registerFoldersCommand(program: Command): void {
       await runCommand(async () => {
         const statuses = folderStatuses(loadState())
         if (statuses.length === 0) {
-          logWarning('No folders tracked yet. Run "symbiotic-chats setup" first.')
+          logWarning('No folders tracked yet. Run "tgu setup" first.')
           return
         }
 

@@ -6,16 +6,16 @@ There is no session password prompt. `openSession()` in `src/session/index.ts`
 resolves auth from the psst vault or the local cache. If a command asks you for
 anything, that is a bug.
 
-Always set `SYMBIOTIC_NON_INTERACTIVE=1`. Without it, a run with a pty attached
+Always set `TGU_NON_INTERACTIVE=1`. Without it, a run with a pty attached
 that has no session will stop on "Enter your phone number" and wait forever.
 
 ```sh
-SYMBIOTIC_NON_INTERACTIVE=1 symbiotic-chats folders list --json
+TGU_NON_INTERACTIVE=1 tgu folders list --json
 ```
 
 Only a human can create a session, because only a human receives the login code.
 When you see `No usable Telegram session`, stop and ask for
-`symbiotic-chats session login` to be run at a terminal. Do not try to work
+`tgu session login` to be run at a terminal. Do not try to work
 around it.
 
 ## Never print a session
@@ -24,7 +24,7 @@ around it.
 as the user, and no password or 2FA challenge stands in the way.
 
 - Do not `psst get TG_SESSION_STRING` to "check" it. Use
-  `symbiotic-chats session status`, which prints a fingerprint.
+  `tgu session status`, which prints a fingerprint.
 - Do not echo it into a log, a commit, an issue, or a demo recording.
 - Write secrets with `psst set NAME --stdin` so the value goes over a pipe and
   never lands in argv, where `ps` and shell history can see it.

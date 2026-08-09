@@ -1,4 +1,4 @@
-# Requirements: Symbiotic Chats
+# Requirements: Telegram Utils
 
 **Defined:** 2026-02-03
 **Core Value:** Reliably export and incrementally sync Telegram chats to searchable Markdown without risking account bans or data loss.

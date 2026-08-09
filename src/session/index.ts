@@ -17,11 +17,11 @@ export type SessionSource =
  * Would a login prompt actually reach a human?
  *
  * A TTY alone is not enough: an agent or CI job often runs with a pty attached
- * and would sit forever on "Enter your phone number". SYMBIOTIC_NON_INTERACTIVE=1
+ * and would sit forever on "Enter your phone number". TGU_NON_INTERACTIVE=1
  * is the explicit way such a caller says "fail instead of asking".
  */
 export function canPrompt(): boolean {
-  if (process.env.SYMBIOTIC_NON_INTERACTIVE === '1') return false
+  if (process.env.TGU_NON_INTERACTIVE === '1') return false
   return Boolean(process.stdin.isTTY)
 }
 
@@ -51,7 +51,7 @@ function noSessionError(): OperatorError {
   return new OperatorError(
     'No usable Telegram session.\n' +
     `  The vault has no valid ${SECRETS.session} and the local cache is empty or stale.\n` +
-    '  Run this once, at a terminal:  symbiotic-chats session login\n' +
+    '  Run this once, at a terminal:  tgu session login\n' +
     '  Then unattended runs pick the session up automatically.'
   )
 }

@@ -13,7 +13,7 @@ command -v jq >/dev/null || { echo "jq required: brew install jq"; exit 1; }
 node demo/make-fixture.mjs >/dev/null
 mkdir -p demo/out
 
-# The tape calls `symbiotic-chats` by name; expose the source wrapper on PATH
+# The tape calls `tgu` by name; expose the source wrapper on PATH
 # so the recording shows the command people actually type.
 PATH="$REPO/bin:$PATH" vhs demo/journeys.tape
 

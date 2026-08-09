@@ -8,7 +8,7 @@ export const LOCK_PATH = 'data/session.lock'
 export class LockHeldError extends OperatorError {
   constructor(public readonly pid: number, path: string) {
     super(
-      `Another symbiotic-chats instance is already running (pid ${pid}).\n` +
+      `Another tgu instance is already running (pid ${pid}).\n` +
       `  Two clients sharing one Telegram session corrupt the message-box state and\n` +
       `  can get the session revoked, so this run was refused.\n` +
       `  If that process is gone, remove the stale lock:  rm ${path}`

@@ -120,7 +120,7 @@ export function makeMockClient(messagesByChatId: Record<number, Message[]>): Tel
 
 export async function withTempDir<T>(fn: (dir: string) => Promise<T> | T): Promise<T> {
   const originalCwd = process.cwd()
-  const tempDir = mkdtempSync(join(tmpdir(), 'symbiotic-chats-'))
+  const tempDir = mkdtempSync(join(tmpdir(), 'tgu-'))
   process.chdir(tempDir)
 
   try {

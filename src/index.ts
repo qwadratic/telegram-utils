@@ -14,9 +14,9 @@ import { registerExportHistoricalCommand } from './cli/commands/export-historica
 import { registerCheckPhonesCommand } from './cli/commands/check-phones.js'
 
 const program = new Command()
-  .name('symbiotic-chats')
+  .name('tgu')
   .description('Export Telegram chat history to Markdown')
-  .version('0.1.0')
+  .version('0.2.0')
 
 registerAuthCommand(program)
 registerSessionCommand(program)

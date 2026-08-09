@@ -107,7 +107,7 @@ export function writeSecret(name: string, value: string): void {
     throw new OperatorError(
       `Could not store ${name} in psst (${detail}).\n` +
       `  Initialise a vault in this directory:  psst init\n` +
-      `  Or inject the value directly:  ${name}=... symbiotic-chats ...`
+      `  Or inject the value directly:  ${name}=... tgu ...`
     )
   }
 }

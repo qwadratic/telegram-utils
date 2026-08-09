@@ -1,4 +1,4 @@
-# Export journeys for symbiotic-chats.
+# Export journeys for tgu.
 #
 # Drives the real CLI against demo/workspace, a synthetic archive built by
 # make-fixture.mjs. Every folder and chat name on screen is invented; no real
@@ -23,13 +23,13 @@ Sleep 1s
 Show
 
 # --- Journey 1: what has already been exported, and how stale is it? ---
-Type "symbiotic-chats folders list"
+Type "tgu folders list"
 Sleep 500ms
 Enter
 Sleep 3s
 
 # --- Journey 2: the same view for a script or an agent ---
-Type "symbiotic-chats folders list --json | jq -c '.[] | {title, lastUpdated}'"
+Type "tgu folders list --json | jq -c '.[] | {title, lastUpdated}'"
 Sleep 500ms
 Enter
 Sleep 3s
@@ -39,7 +39,7 @@ Enter
 Sleep 500ms
 
 # --- Journey 3: pick a folder to re-export, stalest first is visible ---
-Type "symbiotic-chats folders update"
+Type "tgu folders update"
 Sleep 500ms
 Enter
 Sleep 3s
@@ -55,7 +55,7 @@ Enter
 Sleep 500ms
 
 # --- Journey 4: unattended run with no session refuses, and says what to do ---
-Type "SYMBIOTIC_NON_INTERACTIVE=1 symbiotic-chats export chats"
+Type "TGU_NON_INTERACTIVE=1 tgu export chats"
 Sleep 500ms
 Enter
 Sleep 3s
@@ -65,7 +65,7 @@ Type "sleep 60 & echo $! > data/session.lock"
 Sleep 300ms
 Enter
 Sleep 1s
-Type "symbiotic-chats folders update --folder 2"
+Type "tgu folders update --folder 2"
 Sleep 500ms
 Enter
 Sleep 3.5s
@@ -77,7 +77,7 @@ Sleep 500ms
 Show
 
 # --- Journey 6: one place to see session, cache and lock state ---
-Type "symbiotic-chats session status"
+Type "tgu session status"
 Sleep 500ms
 Enter
 Sleep 4s

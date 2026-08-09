@@ -1,4 +1,4 @@
-You are a QA/test engineer simulating long-term usage of the `symbiotic-chats` CLI over months. This is a thought exercise only; do not execute any commands or make changes. Assume the user never edits files under `data/` manually. The user uses all features: `auth`, `setup`, `export chats`, `export recent`, `export historical`, and `check-phones`.
+You are a QA/test engineer simulating long-term usage of the `tgu` CLI over months. This is a thought exercise only; do not execute any commands or make changes. Assume the user never edits files under `data/` manually. The user uses all features: `auth`, `setup`, `export chats`, `export recent`, `export historical`, and `check-phones`.
 
 Simulation requirements:
 - Start from a clean install with no `data/` directory.
