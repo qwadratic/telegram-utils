@@ -10,7 +10,11 @@ export function registerExportSyncCommand(exportCommand: Command): void {
   exportCommand
     .command('chats')
     .description('Export chats into per-chat archive files')
-    .action(async () => {
+    .option(
+      '--private-only',
+      'Skip groups and channels; export only 1:1 chats. A 50k-message group costs hours and holds no private thread.'
+    )
+    .action(async (opts: { privateOnly?: boolean }) => {
       await runCommand(async () => {
         intro(chalk.cyan('Export Chats'))
         await withAuthenticatedClient(
@@ -21,7 +25,7 @@ export function registerExportSyncCommand(exportCommand: Command): void {
             }
 
             // Run incremental sync
-            const result = await syncChats(tg, config)
+            const result = await syncChats(tg, config, { privateOnly: opts.privateOnly })
 
             // Display sync summary
             const duration = formatDuration(result.durationMs)

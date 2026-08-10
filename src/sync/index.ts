@@ -125,16 +125,24 @@ function printSyncSummary(skippedChats: string[], newChatLabels: string[]) {
  * @param config - Configuration with tracked chats
  * @returns Sync statistics
  */
+export function isPrivateChat(chatId: number): boolean {
+  // Telegram convention: users get positive ids, groups and channels negative.
+  return chatId > 0
+}
+
 export async function syncChats(
   tg: TelegramClient,
-  config: Config
+  config: Config,
+  options: { privateOnly?: boolean } = {}
 ): Promise<SyncResult> {
   const startTime = Date.now()
   const state = loadState()
   const isFirstSync = Object.keys(state.chats).length === 0
 
   // Use tracked chat IDs from config for every run
-  const chatsToSync = config.trackedChatIds
+  const chatsToSync = options.privateOnly
+    ? config.trackedChatIds.filter(isPrivateChat)
+    : config.trackedChatIds
   const newChatsAdded = chatsToSync.filter(id => !state.chats[id]).length
   const newFoldersAdded = 0
 
