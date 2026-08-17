@@ -34,6 +34,19 @@ export async function withAuthenticatedClient<T>(
   return withSession((tg) => fn(tg), options)
 }
 
+/**
+ * The chat with yourself, which Telegram calls Saved Messages.
+ *
+ * It is not a special peer type: it is a normal chat whose id is your own user
+ * id. Commands that default to "my own notes" resolve it here rather than
+ * hardcoding the string 'self', so the id they act on is visible in logs and in
+ * the send audit trail.
+ */
+export async function resolveSelfPeer(tg: TelegramClient): Promise<number> {
+  const me = await tg.getMe()
+  return me.id
+}
+
 export async function resolveExportConfig(tg: TelegramClient) {
   let config = loadConfig()
   if (config.trackedFolderIds.length === 0) {

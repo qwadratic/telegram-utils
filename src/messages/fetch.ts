@@ -9,6 +9,22 @@ export interface FetchMessagesOptions {
   minId?: number
   /** Called every 100 messages with current count. */
   onProgress?: (count: number) => void
+  /**
+   * Stop after yielding this many messages.
+   *
+   * For bounded reads (`tgu dump`, `tgu media pull`) where the caller wants a
+   * slice, not the whole history. Omitted means "until the chat runs out",
+   * which is what the export path needs.
+   */
+  limit?: number
+  /**
+   * Stop when a message older than this is reached.
+   *
+   * Iteration is newest-first, so the first message older than `since` means
+   * every remaining message is older too and the walk can end there. That is
+   * the difference between reading a week and reading ten years.
+   */
+  since?: Date
 }
 
 /**
@@ -40,8 +56,14 @@ export async function* fetchMessages(
     chunkSize,
     minId: options?.minId
   })) {
+    // Newest-first, so the first message past the cutoff ends the walk: every
+    // message after it is older still.
+    if (options?.since && msg.date < options.since) break
+
     yield msg
     count++
+
+    if (options?.limit !== undefined && count >= options.limit) break
 
     // Rate limit every chunk
     if (count % chunkSize === 0) {

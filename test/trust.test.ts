@@ -1,0 +1,311 @@
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import assert from 'node:assert'
+import test from 'node:test'
+import { assertPeerId } from '../src/peers/id.js'
+import {
+  MAX_SENDS_PER_DAY,
+  assertConfirmed,
+  readSendLog,
+  recordSend,
+  resetRunCounter,
+  sendsToday,
+  type SentRecord
+} from '../src/send/gate.js'
+import { mediaFilename } from '../src/media/index.js'
+import { withTempDir } from './helpers.js'
+
+const SRC = fileURLToPath(new URL('../src/', import.meta.url))
+
+/**
+ * The trust model, made mechanical.
+ *
+ * backlog/decisions/2026-08-05-consolidate-on-telegram-utils.md declared a
+ * "Security boundary (two one-way rules, both mechanically checkable)" and cited
+ * evals 30, 31 and 32 as the checks. Those evals were never written: the suite
+ * jumped from eval-28 to eval-40, so the credential-holding half of the boundary
+ * was enforced by convention only. This file is that missing half.
+ *
+ * It matters more now than when it was written, because `src/send/` deliberately
+ * introduces the write capability the boundary exists to contain.
+ */
+
+/** Every .ts file under src/, recursively. */
+function sourceFiles(dir = SRC): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) return sourceFiles(path)
+    return entry.name.endsWith('.ts') ? [path] : []
+  })
+}
+
+/** Transitive closure of relative imports from a set of entry points. */
+function importClosure(entries: string[]): Set<string> {
+  const seen = new Set<string>()
+  const queue = entries.map((e) => resolve(SRC, e))
+
+  while (queue.length > 0) {
+    const file = queue.pop() as string
+    if (seen.has(file)) continue
+    seen.add(file)
+
+    let source: string
+    try {
+      source = readFileSync(file, 'utf-8')
+    } catch {
+      // A path that does not resolve to a file is a broken import, which tsc
+      // already fails on; nothing for this walk to add.
+      continue
+    }
+
+    for (const match of source.matchAll(/from\s+'([^']+)'/g)) {
+      const spec = match[1]
+      if (!spec.startsWith('.')) continue
+      queue.push(resolve(dirname(file), spec.replace(/\.js$/, '.ts')))
+    }
+  }
+
+  return seen
+}
+
+/** Telegram RPCs that change state on someone else's screen. */
+const WRITE_RPCS = [
+  'sendText',
+  'sendMedia',
+  'forwardMessages',
+  'deleteMessages',
+  'editMessage',
+  'readHistory'
+] as const
+
+/**
+ * Files permitted to name a write RPC, each with the reason it is fenced.
+ *
+ * `src/send/index.ts` is the whole point of the module: the single place a write
+ * happens. `src/contacts/import.ts` is the older exception the decision log
+ * already recorded - reachable only from the human-invoked `check-phones`.
+ * `src/cli/commands/send.ts` names them only as imported function names.
+ */
+const WRITE_ALLOWLIST = new Set([
+  'send/index.ts',
+  'send/gate.ts',
+  'cli/commands/send.ts',
+  'contacts/import.ts'
+])
+
+test('eval-29 write RPCs appear only in the files fenced to allow them', () => {
+  const offenders: string[] = []
+
+  for (const file of sourceFiles()) {
+    const relative = file.slice(SRC.length)
+    if (WRITE_ALLOWLIST.has(relative)) continue
+
+    const source = readFileSync(file, 'utf-8')
+    for (const rpc of WRITE_RPCS) {
+      // `tg.sendText(` / `client.sendMedia(` - a call, not a mention in prose.
+      if (new RegExp(`\\.\\s*${rpc}\\s*\\(`).test(source)) {
+        offenders.push(`${relative} calls ${rpc}`)
+      }
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    'a write RPC appeared outside the fence. Either route it through src/send/, ' +
+    'or add the file to WRITE_ALLOWLIST with the reason it is safe.'
+  )
+})
+
+test('eval-30 the unattended paths cannot reach the send module', () => {
+  // Everything a cron job, timer or agent invokes without a human present.
+  const unattended = [
+    'cli/commands/export-sync.ts',
+    'cli/commands/export-recent.ts',
+    'cli/commands/export-historical.ts',
+    'cli/commands/folders.ts',
+    'cli/commands/ship.ts',
+    'sync/index.ts',
+    'ship/index.ts'
+  ]
+
+  for (const entry of unattended) {
+    const closure = importClosure([entry])
+    const reachesSend = [...closure].filter((f) => /\/send\/(index|gate)\.ts$/.test(f))
+
+    assert.deepEqual(
+      reachesSend.map((f) => f.slice(SRC.length)),
+      [],
+      `${entry} can reach the send module. An unattended run must not be able ` +
+      'to write to Telegram, so the import has to go.'
+    )
+  }
+})
+
+test('eval-31 the read verbs cannot reach the send module either', () => {
+  // The point of splitting peers/id.ts out of send/: a read verb validates a
+  // peer id without linking the code that can write.
+  for (const entry of ['cli/commands/dump.ts', 'cli/commands/media.ts', 'cli/commands/peers.ts', 'cli/commands/watch.ts']) {
+    const closure = importClosure([entry])
+    assert.deepEqual(
+      [...closure].filter((f) => /\/send\/(index|gate)\.ts$/.test(f)).map((f) => f.slice(SRC.length)),
+      [],
+      `${entry} is a read verb and must not import the send module`
+    )
+  }
+})
+
+test('eval-32 nothing holding a Telegram credential imports gbrain or an LLM', () => {
+  // Rule 1 of the boundary, from the other direction than eval-48 checks it.
+  const credentialHolders = importClosure(['session/index.ts', 'client.ts'])
+  const banned = /gbrain|openrouter|anthropic|openai/i
+
+  for (const file of credentialHolders) {
+    const source = readFileSync(file, 'utf-8')
+    // Strip comments: the decision log is quoted in prose in several of these
+    // files, and quoting the rule must not violate it.
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+
+    assert.ok(
+      !banned.test(code),
+      `${file.slice(SRC.length)} holds a Telegram credential and names an LLM or gbrain`
+    )
+  }
+})
+
+test('eval-33 a peer id must be numeric, never a name or username', () => {
+  assert.equal(assertPeerId('245605314'), 245605314)
+  assert.equal(assertPeerId(-1001234567890), -1001234567890)
+  assert.equal(assertPeerId(' 42 '), 42)
+
+  for (const bad of ['@durov', 'Balint', 'self', '', '0', 'me', '1e999', 'NaN', '12.5']) {
+    assert.throws(
+      () => assertPeerId(bad),
+      /Not a numeric peer id/,
+      `${JSON.stringify(bad)} should be refused: sending must never resolve a name`
+    )
+  }
+})
+
+test('eval-34 a non-interactive send is refused without --yes', () => {
+  const original = process.env.TGU_NON_INTERACTIVE
+  process.env.TGU_NON_INTERACTIVE = '1'
+
+  try {
+    assert.throws(
+      () => assertConfirmed({}),
+      /Refusing to send from a non-interactive run without --yes/
+    )
+    // --yes is the caller taking responsibility on the record.
+    assert.doesNotThrow(() => assertConfirmed({ yes: true }))
+  } finally {
+    if (original === undefined) delete process.env.TGU_NON_INTERACTIVE
+    else process.env.TGU_NON_INTERACTIVE = original
+  }
+})
+
+test('eval-35 the send log is append-only, 0600, and never holds message content', async () => {
+  await withTempDir(async () => {
+    resetRunCounter()
+
+    const secret = 'the actual message body nobody should find in a log'
+    const record: SentRecord = {
+      at: new Date().toISOString(),
+      peerId: 42,
+      kind: 'text',
+      messageId: 7,
+      size: secret.length,
+      ok: true
+    }
+    recordSend(record)
+    recordSend({ ...record, messageId: 8 })
+
+    const log = readSendLog()
+    assert.equal(log.length, 2, 'each send appends one line')
+    assert.deepEqual(log.map((r) => r.messageId), [7, 8], 'append-only, in order')
+
+    const raw = readFileSync('data/sent.jsonl', 'utf-8')
+    assert.ok(!raw.includes(secret), 'the log records size, never content')
+    assert.equal(statSync('data/sent.jsonl').mode & 0o777, 0o600)
+  })
+})
+
+test('eval-36 a truncated log line does not block future sends', async () => {
+  await withTempDir(async () => {
+    recordSend({
+      at: new Date().toISOString(),
+      peerId: 1,
+      kind: 'text',
+      messageId: 1,
+      size: 3,
+      ok: true
+    })
+    // Exactly what a killed process leaves behind.
+    writeFileSync('data/sent.jsonl', `${readFileSync('data/sent.jsonl', 'utf-8')}{"at":"2026`, 'utf-8')
+
+    const log = readSendLog()
+    assert.equal(log.length, 1, 'the good line survives and the partial one is skipped')
+  })
+})
+
+test('eval-37 the daily cap counts a 24h window, and failures count too', () => {
+  const now = Date.parse('2026-08-17T12:00:00.000Z')
+  const at = (hoursAgo: number) => new Date(now - hoursAgo * 3600_000).toISOString()
+
+  const records: SentRecord[] = [
+    { at: at(1), peerId: 1, kind: 'text', messageId: 1, size: 1, ok: true },
+    // A rejected send still consumes budget: a retry loop against a peer that
+    // refuses is the pattern that draws attention.
+    { at: at(2), peerId: 2, kind: 'text', messageId: null, size: 1, ok: false, error: 'PEER_FLOOD' },
+    { at: at(23.9), peerId: 3, kind: 'photo', messageId: 3, size: 1, ok: true },
+    // Outside the window.
+    { at: at(24.1), peerId: 4, kind: 'text', messageId: 4, size: 1, ok: true },
+    { at: at(100), peerId: 5, kind: 'text', messageId: 5, size: 1, ok: true }
+  ]
+
+  assert.equal(sendsToday(records, now), 3)
+  assert.ok(MAX_SENDS_PER_DAY > 0, 'a cap of zero would disable sending entirely')
+})
+
+test('eval-38 a downloaded filename cannot escape the destination directory', () => {
+  const msg = (fileName?: string, type = 'document') =>
+    ({ id: 99, media: { type, fileName } }) as never
+
+  // Traversal, absolute paths and separators all reduce to a basename.
+  assert.equal(mediaFilename(msg('../../../etc/passwd')), '99-passwd')
+  assert.equal(mediaFilename(msg('/etc/shadow')), '99-shadow')
+  assert.equal(mediaFilename(msg('a/b/c.mp4')), '99-c.mp4')
+
+  // A name that is only dots would resolve to a directory.
+  assert.equal(mediaFilename(msg('..')), '99.bin')
+  assert.equal(mediaFilename(msg('.')), '99.bin')
+
+  // The extension survives, which is the whole reason this does not reuse
+  // sanitizeFilename (that helper would produce "report.png_99").
+  assert.equal(mediaFilename(msg('report.png', 'photo')), '99-report.png')
+  assert.equal(mediaFilename(msg(undefined, 'photo')), '99.jpg')
+
+  for (const name of ['../x', 'a/b', 'a\\b', 'x y']) {
+    const produced = mediaFilename(msg(name))
+    assert.ok(!produced.includes('/'), `${JSON.stringify(name)} produced a separator`)
+    assert.ok(!produced.includes('\\'), `${JSON.stringify(name)} produced a separator`)
+    assert.ok(!produced.includes(' '), `${JSON.stringify(name)} produced a space`)
+  }
+})
+
+test('eval-39 the send module is registered from exactly one entry point', () => {
+  // If a second registration site appears, the "only a human typed this" claim
+  // in eval-30 stops being reviewable by reading one file.
+  const registrations = sourceFiles().filter((file) =>
+    /registerSendCommand\s*\(/.test(readFileSync(file, 'utf-8'))
+  )
+
+  assert.deepEqual(
+    registrations.map((f) => f.slice(SRC.length)).sort(),
+    ['cli/commands/send.ts', 'index.ts'],
+    'send should be defined in one file and registered in one file'
+  )
+})

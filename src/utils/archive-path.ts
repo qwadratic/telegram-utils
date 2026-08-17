@@ -1,11 +1,11 @@
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { sanitizeFilename } from './filename.js'
+import { ARCHIVE_DIR } from '../paths.js'
 
 export function ensureArchiveDir(): string {
-  const dirPath = join('data', 'archive')
-  mkdirSync(dirPath, { recursive: true })
-  return dirPath
+  mkdirSync(ARCHIVE_DIR, { recursive: true })
+  return ARCHIVE_DIR
 }
 
 export function getArchivePath(chatName: string, chatId: number): string {

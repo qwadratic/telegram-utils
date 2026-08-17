@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { writeFileAtomic } from '../utils/atomic.js'
+import { STATE_PATH } from '../paths.js'
 
 /**
  * Sync state structure for tracking incremental exports.
@@ -27,10 +28,8 @@ export interface SyncState {
   }>
 }
 
-/**
- * Path to the sync state file
- */
-export const STATE_PATH = 'data/archive/sync-state.json'
+/** Path to the sync state file. Derived from the workspace data root. */
+export { STATE_PATH }
 
 /**
  * Load sync state from disk. Returns empty state if file doesn't exist.

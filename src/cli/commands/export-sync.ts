@@ -14,14 +14,29 @@ export function registerExportSyncCommand(exportCommand: Command): void {
       '--private-only',
       'Skip groups and channels; export only 1:1 chats. A 50k-message group costs hours and holds no private thread.'
     )
-    .action(async (opts: { privateOnly?: boolean }) => {
+    .option(
+      '--chats <ids>',
+      'Comma-separated chat ids to export instead of the tracked folders. Everything else is left untouched.'
+    )
+    .action(async (opts: { privateOnly?: boolean; chats?: string }) => {
       await runCommand(async () => {
         intro(chalk.cyan('Export Chats'))
         await withAuthenticatedClient(
           async (tg) => {
-            const config = await resolveExportConfig(tg)
+            let config = await resolveExportConfig(tg)
             if (!config) {
               return
+            }
+
+            if (opts.chats) {
+              const ids = opts.chats
+                .split(',')
+                .map((s) => Number(s.trim()))
+                .filter((n) => Number.isSafeInteger(n) && n !== 0)
+              if (ids.length === 0) {
+                throw new Error(`--chats had no usable ids: ${opts.chats}`)
+              }
+              config = { ...config, trackedChatIds: ids }
             }
 
             // Run incremental sync

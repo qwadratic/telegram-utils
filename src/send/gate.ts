@@ -1,0 +1,163 @@
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import { OperatorError } from '../errors.js'
+import { SEND_LOG_PATH } from '../paths.js'
+import { canPrompt } from '../session/index.js'
+
+/**
+ * The guards around sending. No Telegram RPC appears in this file.
+ *
+ * Split from `src/send/index.ts` so the caps, the confirmation rule and the
+ * audit log can be tested and reasoned about without touching the two functions
+ * that actually write to Telegram.
+ */
+
+/** Per-run cap. A loop that goes wrong stops here. */
+export const MAX_SENDS_PER_RUN = Number(process.env.TGU_MAX_SENDS_PER_RUN ?? 5)
+
+/**
+ * Per-day cap, counted from the send log.
+ *
+ * Telegram limits outbound messaging from user accounts aggressively, and a
+ * burst to people who did not expect it is the classic path to a report and a
+ * ban. The operator's own stated ceiling for outreach was three a day; twenty
+ * leaves room for ordinary conversation without leaving room for a runaway.
+ */
+export const MAX_SENDS_PER_DAY = Number(process.env.TGU_MAX_SENDS_PER_DAY ?? 20)
+
+/** One line of the send log. Never contains message content. */
+export interface SentRecord {
+  at: string
+  peerId: number
+  kind: 'text' | 'photo' | 'document'
+  /** Message id on success, null on failure. */
+  messageId: number | null
+  /** Characters for text, bytes for media. The size, never the content. */
+  size: number
+  ok: boolean
+  error?: string
+}
+
+/**
+ * Require a human, or an explicit stand-in for one.
+ *
+ * `--yes` is the caller stating on the record that an unattended run is meant to
+ * send. Without it an agent or cron job is refused rather than trusted, because
+ * sending is the one thing here that cannot be undone.
+ */
+export function assertConfirmed(options: { yes?: boolean }): void {
+  if (options.yes) return
+  if (canPrompt()) return
+
+  throw new OperatorError(
+    'Refusing to send from a non-interactive run without --yes.\n' +
+    '  This run cannot ask anyone, and sending is not reversible.\n' +
+    '  Add --yes to state that an unattended send is intended.'
+  )
+}
+
+/** Read the send log. Missing or corrupt lines are skipped, never fatal. */
+export function readSendLog(path = SEND_LOG_PATH): SentRecord[] {
+  if (!existsSync(path)) return []
+
+  return readFileSync(path, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim())
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line) as SentRecord]
+      } catch {
+        // A truncated final line from a killed process is not a reason to
+        // refuse every future send.
+        return []
+      }
+    })
+}
+
+/** Attempts in the last 24h, successful or not. */
+export function sendsToday(records: SentRecord[], now = Date.now()): number {
+  const cutoff = now - 24 * 60 * 60 * 1000
+  return records.filter((r) => Date.parse(r.at) >= cutoff).length
+}
+
+/**
+ * Append one attempt to the log, 0600.
+ *
+ * ponytail: written AFTER the RPC returns, so a process killed between a
+ * successful send and this append under-counts the daily cap by one. Recording
+ * before the call would instead log every network failure as a delivered
+ * message, corrupting the audit trail rather than the budget - and the trail is
+ * the thing you cannot reconstruct later. Upgrade path if the budget ever
+ * matters more: a two-phase record with an `intent` line reconciled next run.
+ */
+export function recordSend(record: SentRecord, path = SEND_LOG_PATH): void {
+  mkdirSync(dirname(path), { recursive: true })
+  appendFileSync(path, `${JSON.stringify(record)}\n`, { encoding: 'utf-8', mode: 0o600 })
+}
+
+/** Sends attempted by THIS process. */
+let sentThisRun = 0
+
+/** Reset the per-run counter. Tests only; a real run is one process. */
+export function resetRunCounter(): void {
+  sentThisRun = 0
+}
+
+export function sentThisRunCount(): number {
+  return sentThisRun
+}
+
+/** Throw unless both caps allow another send. */
+export function assertUnderCaps(): void {
+  if (sentThisRun >= MAX_SENDS_PER_RUN) {
+    throw new OperatorError(
+      `Per-run send cap reached (${MAX_SENDS_PER_RUN}).\n` +
+      '  Raise it deliberately with TGU_MAX_SENDS_PER_RUN if this is intended.'
+    )
+  }
+
+  const today = sendsToday(readSendLog())
+  if (today >= MAX_SENDS_PER_DAY) {
+    throw new OperatorError(
+      `Daily send cap reached (${today}/${MAX_SENDS_PER_DAY} in the last 24h).\n` +
+      '  Telegram limits outbound messaging from user accounts, and a burst is\n' +
+      '  what earns a report. Raise with TGU_MAX_SENDS_PER_DAY if intended.'
+    )
+  }
+}
+
+/**
+ * Run one write under the caps, logging the attempt either way.
+ *
+ * A FAILED attempt still increments the run counter: a retry loop against a
+ * peer that rejects is exactly the pattern that draws attention, so it has to
+ * consume budget rather than being free.
+ */
+export async function guardedSend(
+  peerId: number,
+  kind: SentRecord['kind'],
+  size: number,
+  rpc: () => Promise<{ id: number }>
+): Promise<SentRecord> {
+  assertUnderCaps()
+
+  const base = { at: new Date().toISOString(), peerId, kind, size }
+
+  try {
+    const message = await rpc()
+    sentThisRun++
+    const record: SentRecord = { ...base, messageId: message.id, ok: true }
+    recordSend(record)
+    return record
+  } catch (error) {
+    sentThisRun++
+    const record: SentRecord = {
+      ...base,
+      messageId: null,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    }
+    recordSend(record)
+    throw error
+  }
+}

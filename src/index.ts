@@ -8,21 +8,34 @@ import { registerAuthCommand } from './cli/commands/auth.js'
 import { registerSessionCommand } from './cli/commands/session.js'
 import { registerFoldersCommand } from './cli/commands/folders.js'
 import { registerSetupCommand } from './cli/commands/setup.js'
+import { registerInitCommand } from './cli/commands/init.js'
 import { registerExportSyncCommand } from './cli/commands/export-sync.js'
 import { registerExportRecentCommand } from './cli/commands/export-recent.js'
 import { registerExportHistoricalCommand } from './cli/commands/export-historical.js'
 import { registerCheckPhonesCommand } from './cli/commands/check-phones.js'
 import { registerShipCommand } from './cli/commands/ship.js'
+import { registerPeersCommand } from './cli/commands/peers.js'
+import { registerDumpCommand } from './cli/commands/dump.js'
+import { registerMediaCommand } from './cli/commands/media.js'
+import { registerWatchCommand } from './cli/commands/watch.js'
+import { registerSendCommand } from './cli/commands/send.js'
 
 const program = new Command()
   .name('tgu')
-  .description('Export Telegram chat history to Markdown')
-  .version('0.2.0')
+  .description('Read, archive and send Telegram from the command line')
+  .version('0.3.0')
 
+registerInitCommand(program)
 registerAuthCommand(program)
 registerSessionCommand(program)
 registerSetupCommand(program)
 registerFoldersCommand(program)
+
+// Read verbs: discovery, transcripts, media, waiting for media.
+registerPeersCommand(program)
+registerDumpCommand(program)
+registerMediaCommand(program)
+registerWatchCommand(program)
 
 const exportCommand = program
   .command('export')
@@ -37,5 +50,9 @@ registerExportHistoricalCommand(exportCommand)
 
 registerCheckPhonesCommand(program)
 registerShipCommand(program)
+
+// Write verbs last, and registered from one place, so the only path into
+// `src/send/` is a command a human typed. See test/trust.test.ts.
+registerSendCommand(program)
 
 program.parse()

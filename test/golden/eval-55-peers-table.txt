@@ -1,0 +1,4 @@
+id  name   type     last
+ 2  Bo T   bot      2026-08-15T09:00
+ 1  Ada L  user     2026-08-10T09:00
+ 3  Cy R   user     2026-01-01T09:00

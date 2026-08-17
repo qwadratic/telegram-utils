@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { CONFIG_PATH } from '../paths.js'
 
 /**
  * Configuration structure for tracked folders and chats.
@@ -10,10 +11,8 @@ export interface Config {
   trackedChatIds: number[]
 }
 
-/**
- * Path to the config file
- */
-export const CONFIG_PATH = 'data/config.json'
+/** Path to the config file. Derived from the workspace data root. */
+export { CONFIG_PATH }
 
 /**
  * Load config from disk. Returns empty config if file doesn't exist.

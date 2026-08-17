@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import Database from 'better-sqlite3-multiple-ciphers'
+import { SESSION_DB_PATH } from '../paths.js'
 
 /**
  * Local, encrypted cache: auth key plus the resolved peer table.
@@ -7,8 +8,11 @@ import Database from 'better-sqlite3-multiple-ciphers'
  * The peer table is why this file exists at all. A string session carries
  * only { version, primaryDcs, self, authKey } - no peers - so without a
  * cache on disk every run would have to re-resolve every chat's access hash.
+ *
+ * The path itself lives in `src/paths.ts` so a workspace can relocate its whole
+ * data root at once; re-exported here because that is where callers look for it.
  */
-export const SESSION_DB_PATH = 'data/session.db'
+export { SESSION_DB_PATH }
 
 export interface PeerCacheStats {
   /** Rows in the mtcute `peers` table. */

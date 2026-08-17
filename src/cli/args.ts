@@ -1,3 +1,5 @@
+import { OperatorError } from '../errors.js'
+
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
@@ -42,6 +44,27 @@ export function parseCutoffDate(value: string): Date | null {
     return null
   }
   return date
+}
+
+/**
+ * Parse a `--since` value, or fail with an instruction.
+ *
+ * Wraps {@link parseCutoffDate} rather than adding a second date parser, so
+ * `--since last-7-days` means the same thing everywhere in this CLI. The
+ * difference is only in the failure mode: an export cutoff may legitimately be
+ * absent, whereas a `--since` the user actually typed and got wrong must not be
+ * silently treated as "no filter" and quietly read ten years of history.
+ */
+export function parseSince(value: string): Date {
+  const parsed = parseCutoffDate(value)
+  if (!parsed) {
+    throw new OperatorError(
+      `Unrecognised date: ${JSON.stringify(value)}\n` +
+      '  Use YYYY-MM-DD, or one of: today, yesterday, start-of-week,\n' +
+      '  start-of-month, start-of-year, last-7-days'
+    )
+  }
+  return parsed
 }
 
 export function normalizePhoneInput(value: string): string {

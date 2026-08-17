@@ -1,8 +1,9 @@
 import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { OperatorError } from '../errors.js'
+import { LOCK_PATH } from '../paths.js'
 
-export const LOCK_PATH = 'data/session.lock'
+export { LOCK_PATH }
 
 /** Thrown when another process already holds the lock. */
 export class LockHeldError extends OperatorError {
