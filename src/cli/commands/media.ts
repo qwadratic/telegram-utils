@@ -43,13 +43,17 @@ export function registerMediaCommand(program: Command): void {
     .option('--json', 'Machine-readable output')
     .action(async (peerId: string | undefined, options) => {
       await runCommand(async () => {
+        // Everything checkable is checked before a session is opened, so a typo
+        // costs nothing. The peer is validated here too, when given: only the
+        // *absent* case needs a client, because Saved Messages is your own id.
         const kinds = parseKinds(options.kind)
         const since = options.since ? parseSince(options.since) : undefined
+        const explicitId = peerId ? assertPeerId(peerId) : null
 
         const files = await withAuthenticatedClient(async (tg) => {
           // No peer means Saved Messages, which is the chat with yourself. That
           // was the most common case among the throwaway scripts.
-          const id = peerId ? assertPeerId(peerId) : await resolveSelfPeer(tg)
+          const id = explicitId ?? (await resolveSelfPeer(tg))
 
           return pullMedia(tg, id, {
             destDir: options.to,

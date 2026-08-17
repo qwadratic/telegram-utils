@@ -27,12 +27,20 @@ export function registerPeersCommand(program: Command): void {
     .option('--json', 'Machine-readable output')
     .action(async (options) => {
       await runCommand(async () => {
+        // Parsed before the session is opened, so a bad --since costs no
+        // connection and no lock. Pinned by eval-61.
+        const since = options.since ? parseSince(options.since) : undefined
+        const limit = Number.parseInt(options.limit, 10)
+        if (!Number.isFinite(limit) || limit <= 0) {
+          throw new OperatorError(`--limit must be a positive number, got ${options.limit}`)
+        }
+
         const found = await withAuthenticatedClient((tg) =>
           listPeers(tg, {
             type: options.type,
-            since: options.since ? parseSince(options.since) : undefined,
+            since,
             excludeBots: options.bots === false,
-            limit: Number.parseInt(options.limit, 10)
+            limit
           })
         )
 
@@ -50,8 +58,13 @@ export function registerPeersCommand(program: Command): void {
       await runCommand(async () => {
         if (!needle.trim()) throw new OperatorError('Give a name to search for.')
 
+        const limit = Number.parseInt(options.limit, 10)
+        if (!Number.isFinite(limit) || limit <= 0) {
+          throw new OperatorError(`--limit must be a positive number, got ${options.limit}`)
+        }
+
         const found = await withAuthenticatedClient(async (tg) =>
-          matchPeers(await listPeers(tg, { limit: Number.parseInt(options.limit, 10) }), needle)
+          matchPeers(await listPeers(tg, { limit }), needle)
         )
 
         process.stdout.write(options.json ? `${JSON.stringify(found, null, 2)}\n` : renderPeers(found))

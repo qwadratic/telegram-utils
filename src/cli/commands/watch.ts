@@ -39,8 +39,12 @@ export function registerWatchCommand(program: Command): void {
           ? options.kind.split(',').map((k: string) => k.trim().toLowerCase()).filter(Boolean)
           : []
 
+        // Validated before the session: this command then holds the lock for up
+        // to 45 minutes, so failing on a typo afterwards would be expensive.
+        const explicitId = peerId ? assertPeerId(peerId) : null
+
         const files = await withAuthenticatedClient(async (tg) => {
-          const id = peerId ? assertPeerId(peerId) : await resolveSelfPeer(tg)
+          const id = explicitId ?? (await resolveSelfPeer(tg))
 
           // Progress goes to stderr so --json stdout stays a clean payload.
           console.error(

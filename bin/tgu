@@ -1,9 +1,0 @@
-#!/usr/bin/env sh
-# Run the CLI from source, from wherever the caller happens to be.
-#
-# Data paths (data/config.json, data/archive, data/session.lock) are resolved
-# against the *caller's* working directory, so one install can drive several
-# separate archives by cd-ing into them. Only the code comes from here.
-set -e
-REPO=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec "$REPO/node_modules/.bin/tsx" "$REPO/src/index.ts" "$@"

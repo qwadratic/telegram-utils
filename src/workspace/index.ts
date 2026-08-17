@@ -47,15 +47,13 @@ function vaultPresent(): boolean {
   }
 }
 
-/** Is `psst` on PATH at all? A globally installed CLI cannot assume it. */
-export function psstInstalled(): boolean {
-  try {
-    execFileSync('psst', ['--version'], { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
-}
+/**
+ * Is `psst` on PATH at all? A globally installed CLI cannot assume it.
+ *
+ * Re-exported from the session layer rather than duplicated, so there is one
+ * memoised check instead of two spawns saying the same thing.
+ */
+export { psstAvailable as psstInstalled } from '../session/psst.js'
 
 export function workspaceStatus(): WorkspaceStatus {
   return {

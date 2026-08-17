@@ -51,6 +51,30 @@ function psstGet(name: string, global: boolean): string | null {
 }
 
 /**
+ * Is the `psst` binary on PATH?
+ *
+ * Memoised: this is asked on an error path that may run after several failed
+ * lookups, and each check costs a process spawn.
+ *
+ * Matters because `tgu` is installed globally with npm, and psst is a separate
+ * Rust binary npm knows nothing about. Distinguishing "no secret" from "no
+ * secret store" is the difference between an actionable message and a wrong one.
+ */
+let psstPresent: boolean | null = null
+
+export function psstAvailable(): boolean {
+  if (psstPresent !== null) return psstPresent
+
+  try {
+    execFileSync('psst', ['--version'], { stdio: 'ignore' })
+    psstPresent = true
+  } catch {
+    psstPresent = false
+  }
+  return psstPresent
+}
+
+/**
  * Read a secret. Precedence, first hit wins:
  *   1. process.env  - injected by `psst run`, `psst NAME -- cmd`, a .env file, or CI
  *   2. the local vault (./.psst)   - project-specific values

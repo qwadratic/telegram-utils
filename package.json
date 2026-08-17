@@ -1,28 +1,51 @@
 {
   "name": "telegram-utils",
-  "version": "0.2.0",
-  "description": "Export Telegram chat history to Markdown",
-  "main": "dist/index.js",
+  "version": "0.3.0",
+  "description": "Read, archive and send your own Telegram from the command line or an agent",
+  "keywords": [
+    "telegram",
+    "mtproto",
+    "mtcute",
+    "export",
+    "markdown",
+    "cli",
+    "archive",
+    "agent"
+  ],
+  "homepage": "https://github.com/qwadratic/telegram-utils#readme",
+  "bugs": {
+    "url": "https://github.com/qwadratic/telegram-utils/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qwadratic/telegram-utils.git"
+  },
+  "license": "ISC",
+  "author": "qwadratic",
   "type": "module",
+  "main": "dist/index.js",
   "bin": {
-    "telegram-utils": "bin/tgu",
-    "tgu": "bin/tgu"
+    "telegram-utils": "bin/tgu.mjs",
+    "tgu": "bin/tgu.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
     "dev": "tsx --trace-warnings src/index.ts",
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "start": "node dist/index.js",
     "test": "tsx --test",
-    "coverage": "rm -rf coverage && npx c8 tsx --test"
+    "typecheck": "tsc --noEmit",
+    "coverage": "rm -rf coverage && npx c8 tsx --test",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
-  "keywords": [
-    "telegram",
-    "export",
-    "markdown",
-    "cli"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@clack/prompts": "^1.0.0",
     "@mtcute/core": "^0.27.8",

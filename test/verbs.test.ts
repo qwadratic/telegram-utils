@@ -2,6 +2,7 @@ import assert from 'node:assert'
 import test from 'node:test'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Message, TelegramClient } from '@mtcute/node'
 import { dumpThread, messageRefs, renderDump } from '../src/dump/index.js'
 import { foldAccents, listPeers, matchPeers, renderPeers } from '../src/peers/index.js'
@@ -233,4 +234,34 @@ test('eval-60 rendering an empty result says so rather than printing nothing', (
   assert.equal(renderDump([]), 'no messages\n')
   assert.equal(renderPeers([]), 'no matching chats\n')
   assert.equal(renderPulled([]), 'no matching media\n')
+})
+
+test('eval-61 arguments are validated before a session is opened', () => {
+  // A typo in --since used to cost a connection and the single-instance lock
+  // before being noticed, and then reported "no session" instead of the bad
+  // date. Every verb that both parses arguments and opens a session must do the
+  // parsing first. Static, because the alternative is a live Telegram client.
+  const verbs = ['dump.ts', 'media.ts', 'watch.ts', 'peers.ts']
+
+  for (const verb of verbs) {
+    const source = readFileSync(
+      fileURLToPath(new URL(`../src/cli/commands/${verb}`, import.meta.url)),
+      'utf-8'
+    )
+
+    // The CALL, not the import: `withAuthenticatedClient(` never matches
+    // `import { withAuthenticatedClient } from ...`, which has no paren.
+    const opensSession = source.indexOf('withAuthenticatedClient(')
+    if (opensSession === -1) continue
+
+    for (const parser of ['parseSince(', 'assertPeerId(', 'parseKinds(']) {
+      const parses = source.indexOf(parser)
+      if (parses === -1) continue
+      assert.ok(
+        parses < opensSession,
+        `${verb} calls ${parser} after withAuthenticatedClient: validate arguments ` +
+        'before taking the lock and connecting'
+      )
+    }
+  }
 })
