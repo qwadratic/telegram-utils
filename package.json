@@ -26,7 +26,6 @@
   "dependencies": {
     "@clack/prompts": "^1.0.0",
     "@mtcute/core": "^0.27.8",
-    "@mtcute/markdown-parser": "^0.27.8",
     "@mtcute/node": "^0.27.8",
     "better-sqlite3-multiple-ciphers": "^12.6.2",
     "chalk": "^5.6.2",
@@ -34,7 +33,6 @@
     "dotenv": "^17.2.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.2.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

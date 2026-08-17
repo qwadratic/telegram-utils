@@ -1,11 +1,5 @@
 import type { TelegramClient, Message } from '@mtcute/node'
-
-/**
- * Sleep for the specified number of milliseconds.
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '../utils/sleep.js'
 
 /**
  * Options for fetching messages.

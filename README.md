@@ -40,21 +40,33 @@ The Telegram session lives in a [psst](https://github.com/vpetrigo/psst) vault a
 
 ### Two secrets, two jobs
 
-- **`TG_SESSION_STRING`** is the portable auth key. It is the unit of deployment:
-  copy it to another machine and that machine is logged in.
+- **`TG_SESSION_STRING`** is an auth key: whoever holds it is logged in as you,
+  with no password and no 2FA challenge in the way. Treat it like the account
+  itself. It belongs to the machine and workspace that created it.
 - **`TG_SESSION_DB_KEY`** encrypts `data/session.db` at rest and is generated per
-  machine on first use. It is not worth copying - the cache it protects is
+  workspace on first use. It is not worth copying - the cache it protects is
   regenerable.
 
 `session status` prints a **fingerprint** of the session string, never the
-string, so you can confirm two machines share a session without exposing it.
+string, so you can tell two sessions apart without exposing either.
 
-### Deploying a session elsewhere
+### One auth key per machine, per workspace
+
+**Never copy `TG_SESSION_STRING` anywhere.** Each host and each workspace runs
+its own `tgu session login` and gets its own auth key.
 
 ```sh
-psst get TG_SESSION_STRING | ssh host 'cd app && psst set TG_SESSION_STRING --stdin'
-ssh host 'cd app && tgu session login --force'   # adopt it, discard any old cache
+ssh host 'cd /srv/tgu && tgu session login'   # its own key, its own Active Sessions row
 ```
+
+This is not a style preference. Two clients sharing one auth key desynchronise
+Telegram's `pts`/`qts`/`seq` message-box state and can earn
+`AUTH_KEY_DUPLICATED`, which revokes the session for everyone using it. The
+single-instance lock cannot save you here: `data/session.lock` is
+workspace-relative, so it cannot see another directory, let alone another host.
+
+Distinct keys are free. A shared key is the only genuinely dangerous
+configuration.
 
 Revoke a leaked session in Telegram under Settings > Privacy & Security >
 Active Sessions. Deleting the vault entry alone does not revoke anything.
@@ -105,7 +117,7 @@ crash is reclaimed automatically once its pid is gone.
 
 - MVP complete: export + incremental sync working
 - Archives stored at `data/archive` (single file per chat)
-- Planning artifacts under `.planning/` reflect the expanded roadmap
+- Work is tracked in `backlog/`; decisions in `backlog/decisions/`
 
 ## Commands (MVP)
 

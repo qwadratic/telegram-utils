@@ -1,5 +1,6 @@
 import { tl } from '@mtcute/node'
 import chalk from 'chalk'
+import { sleep } from './sleep.js'
 
 /**
  * Execute a function with automatic FLOOD_WAIT error handling.
@@ -28,11 +29,4 @@ export async function withFloodWaitHandling<T>(
     }
   }
   throw new Error('Max retries exceeded due to flood wait')
-}
-
-/**
- * Sleep for a given number of milliseconds.
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
