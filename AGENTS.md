@@ -1,30 +1,32 @@
 # Working in this repo
 
+This tool holds a live Telegram account credential and can message real people.
+Read this before running anything.
+
 ## Run commands, do not ask for passwords
 
 There is no session password prompt. `openSession()` in `src/session/index.ts`
 resolves auth from the psst vault or the local cache. If a command asks you for
 anything, that is a bug.
 
-Always set `TGU_NON_INTERACTIVE=1`. Without it, a run with a pty attached
-that has no session will stop on "Enter your phone number" and wait forever.
+Always set `TGU_NON_INTERACTIVE=1`. Without it, a run with a pty attached that
+has no session will stop on "Enter your phone number" and wait forever.
 
 ```sh
 TGU_NON_INTERACTIVE=1 tgu folders list --json
 ```
 
 Only a human can create a session, because only a human receives the login code.
-When you see `No usable Telegram session`, stop and ask for
-`tgu session login` to be run at a terminal. Do not try to work
-around it.
+When you see `No usable Telegram session`, stop and ask for `tgu session login`
+to be run at a terminal. Do not try to work around it.
 
 ## Never print a session
 
 `TG_SESSION_STRING` is a full account credential: whoever holds it is logged in
 as the user, and no password or 2FA challenge stands in the way.
 
-- Do not `psst get TG_SESSION_STRING` to "check" it. Use
-  `tgu session status`, which prints a fingerprint.
+- Do not `psst get TG_SESSION_STRING` to "check" it. Use `tgu session status`,
+  which prints a fingerprint.
 - Do not echo it into a log, a commit, an issue, or a demo recording.
 - Write secrets with `psst set NAME --stdin` so the value goes over a pipe and
   never lands in argv, where `ps` and shell history can see it.
@@ -32,27 +34,77 @@ as the user, and no password or 2FA challenge stands in the way.
 If one does leak, revoking it in Telegram (Settings > Privacy & Security >
 Active Sessions) is the fix. Deleting the vault entry does nothing.
 
+## Never move a session between directories or hosts
+
+Each workspace runs its own `tgu session login` and owns its own auth key. Do not
+copy `TG_SESSION_STRING` from one workspace or machine to another, and do not
+"helpfully" seed a new workspace from an existing one.
+
+One auth key used from two places desynchronises Telegram's `pts`/`qts`/`seq`
+message-box state and can earn `AUTH_KEY_DUPLICATED`, which revokes it for
+everyone using it. The lock cannot prevent this: `data/session.lock` is
+workspace-relative and cannot see another directory.
+
+## Sending is different from everything else
+
+Every other command here reads. Sending cannot be undone, and it reaches a real
+person, so it has rules that are enforced by `test/trust.test.ts`, not by taste:
+
+- **Use a numeric peer id. Never a name or `@username`.** `tgu peers find <name>`
+  is the read-only lookup step. A human reads that output; only the id it prints
+  goes into a send.
+- **Do not pass `--yes` to route around a refusal.** `--yes` is the operator
+  stating that an unattended send is intended. If you are an agent and a send was
+  refused, that refusal is the feature. Report it and ask.
+- **Do not raise `TGU_MAX_SENDS_PER_RUN` or `TGU_MAX_SENDS_PER_DAY`** to get a
+  batch through. The caps exist because a burst of outbound messages from a user
+  account is what earns a report and a ban.
+- **Do not add a write RPC anywhere outside `src/send/`.** eval-29 fails the
+  suite if `sendText`, `sendMedia`, `forwardMessages`, `deleteMessages`,
+  `editMessage` or `readHistory` is called from any file not on the allowlist.
+- **Do not import `src/send/` from an unattended path.** eval-30 and eval-31 walk
+  the import graphs of `export`, `folders`, `ship`, `sync` and every read verb,
+  and fail if any of them can reach it. That is what makes "a cron job cannot
+  message anyone" a fact rather than a hope.
+
+`tgu send log` shows what this workspace has already sent. Check it before
+sending anything in a series.
+
 ## One instance at a time
 
 `data/session.lock` is taken by every command that connects. Do not run two
-export commands concurrently and do not delete the lock to "unblock" a run -
-two clients on one auth key corrupt Telegram's message-box state and can get the
-session revoked. If a lock is genuinely stale, the next run reclaims it on its
-own once the recorded pid is gone.
+commands in the same workspace concurrently and do not delete the lock to
+"unblock" a run — two clients on one auth key corrupt Telegram's message-box
+state and can get the session revoked. If a lock is genuinely stale, the next run
+reclaims it on its own once the recorded pid is gone.
+
+`tgu watch` holds the lock for as long as it runs, up to 45 minutes by default.
+That is intended. Do not start an export beside it.
 
 ## Layout
 
 | path | role |
 | --- | --- |
+| `src/paths.ts` | every data path, derived from `TGU_DATA_DIR`. Add new paths HERE |
 | `src/session/psst.ts` | vault access; the only place that shells out to `psst` |
 | `src/session/lock.ts` | single-instance lock |
-| `src/session/cache.ts` | local encrypted cache path and peer-count helpers |
-| `src/session/index.ts` | `openSession` / `withSession` - the entry point for auth |
+| `src/session/cache.ts` | local encrypted cache and peer-count helpers |
+| `src/session/index.ts` | `openSession` / `withSession` — the entry point for auth |
+| `src/workspace/index.ts` | `tgu init` scaffolding and workspace status |
+| `src/peers/id.ts` | `assertPeerId` — the numeric-id rule, imported by every verb |
+| `src/peers/index.ts` | dialog listing and name matching |
+| `src/dump/index.ts` | flat chat transcripts |
+| `src/media/index.ts` | media download |
+| `src/watch/index.ts` | polling for media not yet sent |
+| `src/send/gate.ts` | send caps, confirmation rule, audit log. No RPCs |
+| `src/send/index.ts` | **the only module that calls a Telegram write RPC** |
+| `src/messages/fetch.ts` | the single rate-limited history iterator. Do not add a second |
 | `src/folders/status.ts` | pure derivation of folder recency from sync state |
 | `src/cli/commands/` | one file per command group, registered in `src/index.ts` |
 
-Data paths (`data/config.json`, `data/archive`, `data/session.db`) resolve
-against the current working directory, not the repo.
+Data paths resolve against `TGU_DATA_DIR`, default `data`, which is relative — so
+they resolve against the current directory at the moment of the call. That is how
+`cd` selects a workspace. Keep the default relative.
 
 ## Conventions
 
@@ -61,8 +113,29 @@ against the current working directory, not the repo.
   Anything else is a bug and keeps its stack.
 - Folder recency is derived from per-chat watermarks, never stored separately.
   Keep it that way, or the two drift apart.
+- Rendering is a pure function (`renderPeers`, `renderDump`, `renderPulled`) so a
+  golden can pin the output. Keep formatting out of the code that fetches.
+- `--json` writes only the payload to stdout. Progress and warnings go to stderr.
 - Tests are `node:test` + `assert`, no framework: `pnpm test`.
 - Typecheck with `npx tsc --noEmit` before calling anything done.
+
+## Goldens
+
+A missing golden is written once, announced loudly, and passes — that is a
+bootstrap, not a verification. **Read a bootstrapped golden by eye before
+committing it.** A golden that exists and differs FAILS and is never rewritten:
+either the code regressed, or the change is intended and the golden file must be
+moved by hand in the same commit.
+
+## Tasks and decisions
+
+- `backlog/` is the only tracker. Use the CLI (`backlog task list --plain`);
+  never edit `backlog/tasks/**` by hand.
+- `backlog/decisions/` records WHY. If you reverse a decision recorded there, say
+  so explicitly in a new decision file or an amendment — do not silently
+  contradict it. Two of this repo's worst defects were a README that documented
+  what this file forbids, and a decision log that claimed mechanical gates which
+  did not exist.
 
 ## Before you commit
 
@@ -70,5 +143,5 @@ The pre-commit hook runs psst and gitleaks. It is tracked at
 `.githooks/pre-commit`; a fresh clone needs `git config core.hooksPath .githooks`
 once. Never bypass it to get a commit through.
 
-Never commit anything under `data/` - it holds the session cache and real
-exported messages. It is gitignored; keep it that way.
+Never commit anything under `data/` — it holds the session cache, real exported
+messages and the send log. It is gitignored; keep it that way.

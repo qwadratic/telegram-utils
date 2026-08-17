@@ -74,8 +74,11 @@ export function resetLocalCache(path = SESSION_DB_PATH): void {
  *   2. the string session in psst, imported into a fresh cache
  *   3. an interactive login, whose result is written back to psst
  *
- * Step 3 is what makes step 2 possible on the next machine: the exported
- * string is the unit of deployment.
+ * Step 2 reads THIS workspace's vault, not another machine's. A session string
+ * is an auth key, and one auth key used from two places desynchronises
+ * Telegram's pts/qts/seq state and can earn AUTH_KEY_DUPLICATED - which revokes
+ * it for everyone using it. So step 3 is per workspace, deliberately: each one
+ * logs in once and owns its own key. Never copy a session between workspaces.
  */
 export async function openSession(options: OpenSessionOptions = {}): Promise<SessionHandle> {
   const interactive = options.interactive ?? canPrompt()
