@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import type { Command } from 'commander'
-import { runUpdateCheck, updateSkipReason } from '../../update/index.js'
+import { runUpdateCheck } from '../../update/index.js'
 import { runCommand } from '../errors.js'
 
 /**
@@ -76,9 +76,4 @@ export function registerUpdateCommand(program: Command, currentVersion: string):
         )
       })
     })
-}
-
-/** True when updates are switched off for this run, for the status command. */
-export function updatesDisabled(): boolean {
-  return updateSkipReason() !== null
 }

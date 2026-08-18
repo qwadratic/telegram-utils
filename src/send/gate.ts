@@ -103,10 +103,6 @@ export function resetRunCounter(): void {
   sentThisRun = 0
 }
 
-export function sentThisRunCount(): number {
-  return sentThisRun
-}
-
 /** Throw unless both caps allow another send. */
 export function assertUnderCaps(): void {
   if (sentThisRun >= MAX_SENDS_PER_RUN) {
