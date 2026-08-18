@@ -1,0 +1,9 @@
+/w
+  ok    psst                 fine
+  FAIL  api-credentials      missing API_HASH
+        -> psst set API_HASH
+  warn  archive-permissions  0755, readable beyond you
+        -> chmod 700 data/archive
+
+NOT ready: configuration is missing.
+Next:  psst set API_HASH

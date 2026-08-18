@@ -7,6 +7,7 @@ import { OperatorError } from '../errors.js'
 import { SESSION_DB_PATH } from './cache.js'
 import { getOrCreateDbKey, psstAvailable, readSecret, writeSecret, SECRETS } from './psst.js'
 import { setting } from '../env.js'
+import { EXIT } from '../exit-codes.js'
 
 /** Where this run's authorisation came from. */
 export type SessionSource =
@@ -69,7 +70,8 @@ function noSessionError(): OperatorError {
     '  is empty or stale.\n' +
     '  Run this once, at a terminal:  tg session login\n' +
     '  Then unattended runs pick the session up automatically.\n' +
-    '  Each workspace logs in for itself; never copy a session from another one.'
+    '  Each workspace logs in for itself; never copy a session from another one.',
+    EXIT.needsHuman
   )
 }
 

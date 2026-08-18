@@ -1,0 +1,7 @@
+/w
+  ok    psst             fine
+  ok    api-credentials  fine
+  ok    session          fine
+  ok    lock             fine
+
+Ready. Unattended runs will work.

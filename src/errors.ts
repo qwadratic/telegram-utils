@@ -7,8 +7,19 @@
  * stdout would have to skip past it to find the actual next step.
  */
 export class OperatorError extends Error {
-  constructor(message: string) {
+  /**
+   * How the caller should react, as an exit code.
+   *
+   * Defaults to `notConfigured`, which is what almost every OperatorError has
+   * always meant: something in the environment is missing and fixing it does
+   * not require a human at a terminal. The two that DO differ - needing a login,
+   * and losing the lock - set it explicitly.
+   */
+  readonly exitCode: number
+
+  constructor(message: string, exitCode = 4) {
     super(message)
     this.name = 'OperatorError'
+    this.exitCode = exitCode
   }
 }

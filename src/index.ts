@@ -20,9 +20,10 @@ import { registerMediaCommand } from './cli/commands/media.js'
 import { registerWatchCommand } from './cli/commands/watch.js'
 import { registerSendCommand } from './cli/commands/send.js'
 import { registerUpdateCommand } from './cli/commands/update.js'
+import { registerDoctorCommand } from './cli/commands/doctor.js'
 import { scheduleUpdateCheck } from './update/index.js'
 
-const VERSION = '0.3.7'
+const VERSION = '0.3.8'
 
 const program = new Command()
   .name('tg')
@@ -30,6 +31,7 @@ const program = new Command()
   .version(VERSION)
 
 registerInitCommand(program)
+registerDoctorCommand(program)
 registerAuthCommand(program)
 registerSessionCommand(program)
 registerSetupCommand(program)

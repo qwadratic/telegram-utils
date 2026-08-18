@@ -1,6 +1,7 @@
 import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { OperatorError } from '../errors.js'
+import { EXIT } from '../exit-codes.js'
 import { LOCK_PATH } from '../paths.js'
 
 export { LOCK_PATH }
@@ -12,7 +13,8 @@ export class LockHeldError extends OperatorError {
       `Another tg instance is already running (pid ${pid}).\n` +
       `  Two clients sharing one Telegram session corrupt the message-box state and\n` +
       `  can get the session revoked, so this run was refused.\n` +
-      `  If that process is gone, remove the stale lock:  rm ${path}`
+      `  If that process is gone, remove the stale lock:  rm ${path}`,
+      EXIT.busy
     )
     this.name = 'LockHeldError'
   }

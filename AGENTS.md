@@ -3,6 +3,29 @@
 This tool holds a live Telegram account credential and can message real people.
 Read this before running anything.
 
+## Check before you commit to a long task
+
+`tg doctor` answers one question: will an unattended run work right now? It runs
+the offline checks plus ONE authenticated round trip, because a session can look
+perfect on disk and have been revoked from another device an hour ago.
+
+```sh
+tg doctor --json      # full report
+tg doctor --offline   # no network, no lock
+```
+
+Exit codes are the contract. Act on them, do not parse prose:
+
+| code | meaning | what to do |
+| --- | --- | --- |
+| 0 | ok | proceed |
+| 1 | a bug in this tool | report it, with the stack |
+| 2 | usage error | fix the command |
+| 3 | `needs_human_login` | STOP. Ask the operator to run `tg session login`. Retrying is pointless |
+| 4 | `not_configured` | the report's `hint` is the fix; it usually needs no human |
+| 5 | busy | another run holds the lock. Wait and retry |
+| 6 | upstream | Telegram, gbrain or the network failed. Not your fault; retry with backoff |
+
 ## Run commands, do not ask for passwords
 
 There is no session password prompt. `openSession()` in `src/session/index.ts`
