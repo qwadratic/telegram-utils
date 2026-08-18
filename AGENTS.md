@@ -50,15 +50,24 @@ workspace-relative and cannot see another directory.
 Every other command here reads. Sending cannot be undone, and it reaches a real
 person, so it has rules that are enforced by `test/trust.test.ts`, not by taste:
 
-- **Use a numeric peer id. Never a name or `@username`.** `tgu peers find <name>`
-  is the read-only lookup step. A human reads that output; only the id it prints
-  goes into a send.
+- **Prefer a numeric id when you have one.** Commands also accept `@username`
+  and `t.me` links (D17), which is convenient and is also how you reach the
+  wrong person: `@durov` and `@durvo` both exist and belong to different people.
+  When an id is available - from `tgu peers find <name> --id-only` or from a
+  previous resolution - use it. When you use a handle, read the resolved
+  identity line back to the operator before continuing.
+- **Never pass a name the operator did not give you verbatim.** Do not guess a
+  handle from a display name, and do not "correct" one that fails to resolve.
+  A failed resolution is a question for the operator, not a puzzle to solve.
 - **Do not pass `--yes` to route around a refusal.** `--yes` is the operator
   stating that an unattended send is intended. If you are an agent and a send was
   refused, that refusal is the feature. Report it and ask.
 - **Do not raise `TGU_MAX_SENDS_PER_RUN` or `TGU_MAX_SENDS_PER_DAY`** to get a
   batch through. The caps exist because a burst of outbound messages from a user
   account is what earns a report and a ban.
+- **Do not resolve a peer inside `src/send/`.** Resolution happens in the command
+  layer so that exactly one place turns a reference into an identity, and that
+  identity is what gets confirmed and logged. eval-33 and eval-65 pin this.
 - **Do not add a write RPC anywhere outside `src/send/`.** eval-29 fails the
   suite if `sendText`, `sendMedia`, `forwardMessages`, `deleteMessages`,
   `editMessage` or `readHistory` is called from any file not on the allowlist.
@@ -91,7 +100,8 @@ That is intended. Do not start an export beside it.
 | `src/session/cache.ts` | local encrypted cache and peer-count helpers |
 | `src/session/index.ts` | `openSession` / `withSession` — the entry point for auth |
 | `src/workspace/index.ts` | `tgu init` scaffolding and workspace status |
-| `src/peers/id.ts` | `assertPeerId` — the numeric-id rule, imported by every verb |
+| `src/peers/ref.ts` | `parsePeerRef` / `resolvePeerRef` — id, @username, t.me link or `me` |
+| `src/peers/id.ts` | `assertPeerId` — the send module's own numeric boundary |
 | `src/peers/index.ts` | dialog listing and name matching |
 | `src/dump/index.ts` | flat chat transcripts |
 | `src/media/index.ts` | media download |

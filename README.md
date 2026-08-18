@@ -14,9 +14,21 @@ a message when you mean to.
 npm install -g telegram-utils
 ```
 
-It also needs [psst](https://github.com/vpetrigo/psst), a separate binary that
-holds the secrets. `npm` cannot install it for you, so `tgu init` checks for it
-and tells you if it is missing.
+### Secrets
+
+`tgu` needs your Telegram `API_ID` and `API_HASH` (get them at
+[my.telegram.org](https://my.telegram.org/apps)). Two ways to supply them:
+
+**Environment variables**, if you already have a way to manage secrets:
+
+```sh
+API_ID=... API_HASH=... tgu session login
+```
+
+**Or [psst](https://github.com/vpetrigo/psst)**, a small encrypted vault, which
+is what `tgu init` sets up and what makes unattended runs work without any
+secret sitting in your shell history. It is a separate binary that `npm` cannot
+install for you; `tgu init` checks and tells you if it is missing.
 
 ## Quick start
 
@@ -24,11 +36,11 @@ and tells you if it is missing.
 mkdir ~/chats/work && cd ~/chats/work
 
 tgu init                 # scaffold this directory as a workspace
-psst init                # a vault for this workspace
+psst init                # a vault for this workspace (or use env vars, see below)
 tgu session login        # once, at a terminal: phone + code + 2FA
 
-tgu peers list --type user --no-bots     # who do I talk to?
-tgu dump 108844221 --since last-7-days   # read one thread
+tgu peers list --type user --no-bots   # who do I talk to?
+tgu dump @durov --since last-7-days    # read one thread
 ```
 
 After `session login`, no command ever prompts for a password again. That is
@@ -76,21 +88,45 @@ because that directory holds a full account credential *and* real messages.
 | command | what it does |
 | --- | --- |
 | `peers list [--type user] [--since <date>] [--no-bots] [--json]` | chats, most recent activity first |
-| `peers find <needle> [--json]` | chats whose name or username matches, accent-insensitively |
-| `dump <peerId> [--since <date>] [--limit n] [--json]` | one chat as a flat chronological transcript on stdout |
-| `media pull [peerId] [--kind photo,video] [--max n] [--to dir]` | download media; no peer means your Saved Messages |
-| `watch [peerId] [--minutes n] [--kind ...]` | wait for media that has not been sent yet, then download it |
+| `peers find <needle> [--json] [--id-only]` | chats whose name or username matches, accent-insensitively |
+| `dump <peer> [--since <date>] [--limit n] [--json]` | one chat as a flat chronological transcript on stdout |
+| `media pull [peer] [--kind photo,video] [--max n] [--to dir]` | download media; no peer means your Saved Messages |
+| `watch [peer] [--minutes n] [--kind ...]` | wait for media that has not been sent yet, then download it |
 
-`peers find` exists because every other command takes a **numeric peer id**,
-never a name. That is deliberate: a fuzzy match on the path that reads or writes
-a real person's chat is one typo away from the wrong person. Look the id up once,
-read it with your own eyes, then use it.
+### Naming a chat
+
+Anywhere a command takes a chat, all four of these work:
 
 ```sh
-tgu peers find zoe            # -> 904417238  Zoë Ünal  user
-tgu dump 904417238 --json | jq -r '.[].text'
-tgu media pull 904417238 --kind video --max 4 --to /tmp/clips
+tgu dump 904417238             # a numeric id
+tgu dump @durov                # a username
+tgu dump https://t.me/durov    # a public link
+tgu dump me                    # your own Saved Messages
 ```
+
+Whatever you type, the command resolves it and prints the identity it landed on
+before doing anything:
+
+```
+reading Zoë Ünal (@zoe_unal) [id 904417238]
+```
+
+That line is the check. A username is convenient but it is also how you reach
+the wrong person: `@durov` and `@durvo` are both valid handles belonging to
+different people. The resolved name, handle and id are shown together so a
+mistake is visible rather than silent.
+
+Usernames only resolve for public chats and people you can reach. For a private
+chat, look it up first:
+
+```sh
+tgu peers find zoe                        # a table you read with your eyes
+tgu dump "$(tgu peers find zoe --id-only)"   # or compose it directly
+```
+
+`--id-only` prints one id and nothing else, and **fails when the needle matches
+more than one chat** rather than guessing. Guessing is how the wrong chat gets
+read or texted.
 
 `dump` writes the payload to stdout and everything else to stderr, so it pipes.
 
@@ -106,7 +142,7 @@ file each, incrementally, shaped for a knowledge base.
 - `folders list [--json]` — folders already synced, most recently updated first
 - `folders update [--folder <id> | --all]` — re-export one folder, or every folder stalest-first
 - `setup` — pick which folders to track
-- `ship [--dry-run] [--all]` — capture new archive files into gbrain
+- `ship [--dry-run] [--all]` — push new archive files into [gbrain](https://github.com/garrytan/gstack), an optional external knowledge base. **Skip this command if you do not use gbrain**; nothing else depends on it.
 
 Recency exports are incremental and rely on `data/archive/sync-state.json` for
 per-chat watermarks. Cutoffs are interpreted in your local timezone at the start
@@ -128,16 +164,20 @@ hard to fire by accident.
 
 | command | what it does |
 | --- | --- |
-| `send text <peerId> <text>` | send a message |
-| `send media <peerId> <file> [--caption ...]` | send a file |
+| `send text <peer> <text>` | send a message |
+| `send media <peer> <file> [--caption ...]` | send a file |
 | `note <text>` | send to your own Saved Messages |
 | `send log [--json]` | what this workspace has sent |
 
 Five guards, each one enforced by a test:
 
-1. **Numeric ids only.** `send text @durov ...` is refused. Use `peers find`.
-2. **The recipient is confirmed by name.** An id is unreadable, so before
-   sending, `tgu` resolves it back to a name and asks. `--yes` skips this.
+1. **The recipient is resolved and shown before anything is sent.** Whatever you
+   typed becomes a name, a handle and an id, printed together, and you confirm.
+   This is the main guard, because a mistyped username resolves to a real
+   stranger rather than failing.
+2. **Lookalike handles are refused outright.** Telegram usernames are ASCII, so
+   a Cyrillic `о` pasted from a message is not a valid username at all and never
+   reaches the network.
 3. **Unattended runs need `--yes`.** Without a human to ask and without the flag,
    the send is refused rather than assumed.
 4. **Capped.** 5 per run and 20 per day (`TGU_MAX_SENDS_PER_RUN`,

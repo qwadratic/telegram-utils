@@ -7,6 +7,7 @@ import type { Message, TelegramClient } from '@mtcute/node'
 import { dumpThread, messageRefs, renderDump } from '../src/dump/index.js'
 import { foldAccents, listPeers, matchPeers, renderPeers } from '../src/peers/index.js'
 import { mediaMatches, pullMedia, renderPulled } from '../src/media/index.js'
+import { parsePeerRef } from '../src/peers/ref.js'
 import { assertGolden, withTempDir } from './helpers.js'
 
 /**
@@ -254,7 +255,7 @@ test('eval-61 arguments are validated before a session is opened', () => {
     const opensSession = source.indexOf('withAuthenticatedClient(')
     if (opensSession === -1) continue
 
-    for (const parser of ['parseSince(', 'assertPeerId(', 'parseKinds(']) {
+    for (const parser of ['parseSince(', 'parsePeerRef(', 'parseKinds(']) {
       const parses = source.indexOf(parser)
       if (parses === -1) continue
       assert.ok(
@@ -264,4 +265,58 @@ test('eval-61 arguments are validated before a session is opened', () => {
       )
     }
   }
+})
+
+test('eval-62 a chat can be named by id, @username, link or me', () => {
+  // The four ways a Telegram chat is actually written down and pasted around.
+  assert.deepEqual(parsePeerRef('108844221'), { value: 108844221, raw: '108844221', kind: 'id' })
+  assert.deepEqual(parsePeerRef('-1001234567890'), {
+    value: -1001234567890,
+    raw: '-1001234567890',
+    kind: 'id'
+  })
+  assert.deepEqual(parsePeerRef('@durov'), { value: 'durov', raw: '@durov', kind: 'username' })
+  assert.deepEqual(parsePeerRef('durov'), { value: 'durov', raw: 'durov', kind: 'username' })
+  assert.equal(parsePeerRef('me').kind, 'self')
+  assert.equal(parsePeerRef('self').kind, 'self')
+
+  for (const link of [
+    't.me/durov',
+    'https://t.me/durov',
+    'http://t.me/durov',
+    'https://www.t.me/durov',
+    'https://telegram.me/durov',
+    'https://t.me/durov/'
+  ]) {
+    assert.deepEqual(parsePeerRef(link).value, 'durov', `${link} should resolve to the handle`)
+  }
+})
+
+test('eval-63 a homoglyph username is refused, not resolved', () => {
+  // Telegram usernames are ASCII by definition, so a Cyrillic "о" pasted from a
+  // message is not a lookalike of a valid username - it is not one at all. The
+  // parser rejects it before it can reach the network and become a real
+  // stranger's account. This is the one homoglyph defence that works, because
+  // the confirmation prompt would show a name that looks equally correct.
+  assert.throws(() => parsePeerRef('@durоv'), /non-ASCII/, 'Cyrillic o refused')
+  assert.throws(() => parsePeerRef('@durоv'), /non-ASCII/)
+  assert.throws(() => parsePeerRef('@durаv'), /non-ASCII/, 'Cyrillic a refused')
+  assert.throws(() => parsePeerRef('Zoë'), /non-ASCII/)
+})
+
+test('eval-64 malformed and unusable references are refused offline', () => {
+  for (const bad of ['', '   ', '0', 'ab', 'a'.repeat(33), '12.5', 'NaN', 'has space', '@@durov']) {
+    assert.throws(
+      () => parsePeerRef(bad),
+      /Cannot use/,
+      `${JSON.stringify(bad)} should be refused`
+    )
+  }
+
+  // An invite link names a join flow, not a peer, and says so specifically.
+  assert.throws(() => parsePeerRef('https://t.me/+AbCdEf'), /private invite link/)
+  assert.throws(() => parsePeerRef('https://t.me/joinchat'), /private invite link/)
+
+  // 1e999 parses as Infinity, which is not a safe integer.
+  assert.throws(() => parsePeerRef('1e999'), /Cannot use/)
 })

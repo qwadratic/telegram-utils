@@ -54,6 +54,10 @@ export function registerPeersCommand(program: Command): void {
     .description('Find chats whose name or username contains <needle>')
     .option('--limit <n>', 'Dialogs to walk', '500')
     .option('--json', 'Machine-readable output')
+    .option(
+      '--id-only',
+      'Print just the id of the single best match, for shell composition. Fails if the needle is ambiguous.'
+    )
     .action(async (needle: string, options) => {
       await runCommand(async () => {
         if (!needle.trim()) throw new OperatorError('Give a name to search for.')
@@ -66,6 +70,25 @@ export function registerPeersCommand(program: Command): void {
         const found = await withAuthenticatedClient(async (tg) =>
           matchPeers(await listPeers(tg, { limit }), needle)
         )
+
+        // --id-only exists so name-to-id composes without jq:
+        //   tgu dump "$(tgu peers find zoe --id-only)"
+        // It REFUSES on ambiguity rather than guessing, because silently picking
+        // the first of several people is how the wrong chat gets read or texted.
+        if (options.idOnly) {
+          if (found.length === 0) {
+            throw new OperatorError(`No chat matches ${JSON.stringify(needle)}.`)
+          }
+          if (found.length > 1) {
+            throw new OperatorError(
+              `${found.length} chats match ${JSON.stringify(needle)}, so there is no single id:\n` +
+              found.map((p) => `    ${p.id}  ${p.name}${p.username ? ` (@${p.username})` : ''}`).join('\n') +
+              '\n  Narrow the search, or pass one of these ids directly.'
+            )
+          }
+          process.stdout.write(`${found[0].id}\n`)
+          return
+        }
 
         process.stdout.write(options.json ? `${JSON.stringify(found, null, 2)}\n` : renderPeers(found))
       })

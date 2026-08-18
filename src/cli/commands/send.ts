@@ -9,8 +9,7 @@ import {
   readSendLog,
   sendsToday
 } from '../../send/gate.js'
-import { listPeers } from '../../peers/index.js'
-import { assertPeerId } from '../../peers/id.js'
+import { describePeer, parsePeerRef, resolvePeerRef, type ResolvedPeer } from '../../peers/ref.js'
 import { runCommand } from '../errors.js'
 import { OperatorError } from '../../errors.js'
 import { canPrompt } from '../../session/index.js'
@@ -26,28 +25,31 @@ import { withAuthenticatedClient } from './shared.js'
  */
 
 /**
- * Show who the id belongs to and require a yes.
+ * Show exactly who the message is going to, and require a yes.
  *
- * The id is the safe way to address a peer, but it is unreadable, so the one
- * thing a human cannot verify by looking at the command is whether 108844221 is
- * the person they meant. This resolves the id back to a name and asks. Skipped
- * when `--yes` was passed, which is the caller taking that responsibility.
+ * This is now the PRIMARY guard, not a courtesy. Sends accept an @username as
+ * well as an id (D17), which means a mistyped or lookalike handle resolves to a
+ * real stranger rather than failing. Nothing downstream can catch that - so the
+ * defence is showing the resolved identity, in full, before anything is sent:
+ * display name, @handle and numeric id together.
+ *
+ * Skipped by `--yes`, which is the caller taking that responsibility on the
+ * record, and unavailable to a run with nobody to ask.
  */
 async function confirmRecipient(
-  tg: TelegramClient,
-  peerId: number,
+  target: ResolvedPeer,
   what: string,
   yes: boolean
 ): Promise<boolean> {
   if (yes || !canPrompt()) return true
 
-  const peer = (await listPeers(tg, { limit: 500 })).find((p) => p.id === peerId)
-  const who = peer ? `${peer.name}${peer.username ? ` (@${peer.username})` : ''}` : 'UNKNOWN CHAT'
+  console.log(chalk.yellow(`\nAbout to send ${what} to ${chalk.bold(describePeer(target))}`))
 
-  console.log(chalk.yellow(`\nAbout to send ${what} to ${chalk.bold(who)} [id ${peerId}]`))
-  if (!peer) {
+  // Typing an id and typing a handle carry different risks, so say which one
+  // this was: a handle was resolved by Telegram, an id was taken at face value.
+  if (target.ref.kind === 'username') {
     console.log(
-      chalk.yellow('  This id is not in your recent dialogs, so the name could not be shown.')
+      chalk.dim(`  resolved from ${target.ref.raw} - check the name is who you meant`)
     )
   }
 
@@ -70,32 +72,34 @@ export function registerSendCommand(program: Command): void {
     .action(() => send.help())
 
   send
-    .command('text <peerId> <text>')
-    .description('Send a text message to a numeric peer id')
+    .command('text <peer> <text>')
+    .description('Send a text message (id, @username or t.me link)')
     .option('--yes', 'Skip the recipient confirmation; required for unattended runs')
-    .action(async (peerId: string, text: string, options) => {
+    .action(async (peer: string, text: string, options) => {
       await runCommand(async () => {
-        const id = assertPeerId(peerId)
+        parsePeerRef(peer)
         await withAuthenticatedClient(async (tg) => {
-          if (!(await confirmRecipient(tg, id, 'a text message', Boolean(options.yes)))) return
-          report(await sendText(tg, id, text, { yes: options.yes }))
+          const target = await resolvePeerRef(tg, peer)
+          if (!(await confirmRecipient(target, 'a text message', Boolean(options.yes)))) return
+          report(await sendText(tg, target.id, text, { yes: options.yes }))
         })
       })
     })
 
   send
-    .command('media <peerId> <file>')
-    .description('Send a file to a numeric peer id')
+    .command('media <peer> <file>')
+    .description('Send a file (id, @username or t.me link)')
     .option('--caption <text>', 'Caption for the file')
     .option('--mime <type>', 'Override the detected mime type')
     .option('--yes', 'Skip the recipient confirmation; required for unattended runs')
-    .action(async (peerId: string, file: string, options) => {
+    .action(async (peer: string, file: string, options) => {
       await runCommand(async () => {
-        const id = assertPeerId(peerId)
+        parsePeerRef(peer)
         await withAuthenticatedClient(async (tg) => {
-          if (!(await confirmRecipient(tg, id, `the file ${file}`, Boolean(options.yes)))) return
+          const target = await resolvePeerRef(tg, peer)
+          if (!(await confirmRecipient(target, `the file ${file}`, Boolean(options.yes)))) return
           report(
-            await sendMedia(tg, id, file, {
+            await sendMedia(tg, target.id, file, {
               caption: options.caption,
               mime: options.mime,
               yes: options.yes

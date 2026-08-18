@@ -176,8 +176,14 @@ test('eval-32 nothing holding a Telegram credential imports gbrain or an LLM', (
   }
 })
 
-test('eval-33 a peer id must be numeric, never a name or username', () => {
-  assert.equal(assertPeerId('108844221'), 108844221)
+test('eval-33 the send module itself only ever accepts a resolved numeric id', () => {
+  // The CLI accepts @usernames and links (D17), but resolution happens in the
+  // COMMAND layer, and what reaches src/send/ is always a concrete id that has
+  // already been shown to a human. This pins that boundary: the send functions
+  // do not resolve names themselves, so there is exactly one place where a
+  // reference becomes an identity, and exactly one place that identity is
+  // confirmed and logged.
+  assert.equal(assertPeerId(108844221), 108844221)
   assert.equal(assertPeerId(-1001234567890), -1001234567890)
   assert.equal(assertPeerId(' 42 '), 42)
 
@@ -185,9 +191,33 @@ test('eval-33 a peer id must be numeric, never a name or username', () => {
     assert.throws(
       () => assertPeerId(bad),
       /Not a numeric peer id/,
-      `${JSON.stringify(bad)} should be refused: sending must never resolve a name`
+      `${JSON.stringify(bad)} should be refused by the send module's own boundary`
     )
   }
+})
+
+test('eval-65 the send commands resolve a peer before calling the send module', () => {
+  // The guarantee behind eval-33: no send command may pass raw user input
+  // through to sendText/sendMedia. Each one must resolve it first, so the
+  // confirmation prompt has a real identity to show.
+  const source = readFileSync(
+    fileURLToPath(new URL('../src/cli/commands/send.ts', import.meta.url)),
+    'utf-8'
+  )
+
+  assert.ok(
+    source.includes('resolvePeerRef('),
+    'send.ts must resolve a reference to an identity before sending'
+  )
+  assert.ok(
+    !/send(Text|Media)\(tg,\s*peer\b/.test(source),
+    'send.ts must never pass the raw typed reference to a send function'
+  )
+  // Every send path shows the resolved identity, or takes --yes on the record.
+  assert.ok(
+    source.includes('confirmRecipient(target,'),
+    'the confirmation must receive the RESOLVED peer, not an id to look up later'
+  )
 })
 
 test('eval-34 a non-interactive send is refused without --yes', () => {

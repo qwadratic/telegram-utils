@@ -3,7 +3,9 @@ import type { TelegramClient } from '@mtcute/node'
 import { withSession, type OpenSessionOptions } from '../../session/index.js'
 import { refreshTrackedChats, syncFolderConfig } from '../../folders/index.js'
 import { loadConfig } from '../../config/index.js'
+import chalk from 'chalk'
 import { logWarning } from '../log.js'
+import { describePeer, resolvePeerRef } from '../../peers/ref.js'
 
 /**
  * Format duration in milliseconds to human-readable string.
@@ -45,6 +47,27 @@ export async function withAuthenticatedClient<T>(
 export async function resolveSelfPeer(tg: TelegramClient): Promise<number> {
   const me = await tg.getMe()
   return me.id
+}
+
+/**
+ * Resolve the chat a command should act on, and say out loud which one it is.
+ *
+ * `peer` absent means Saved Messages, which is the common default for the media
+ * and watch verbs. When it is present it may be an id, an @username, a t.me link
+ * or `me`; whatever it was, the resolved identity is announced on stderr so the
+ * operator can see they aimed at the chat they meant. stderr, not stdout, so a
+ * `--json` payload stays pipeable.
+ */
+export async function resolveTarget(
+  tg: TelegramClient,
+  peer: string | undefined,
+  verb: string
+): Promise<number> {
+  if (!peer) return resolveSelfPeer(tg)
+
+  const target = await resolvePeerRef(tg, peer)
+  console.error(chalk.dim(`${verb} ${describePeer(target)}`))
+  return target.id
 }
 
 export async function resolveExportConfig(tg: TelegramClient) {

@@ -132,3 +132,51 @@ RIPPLES: `mediaFilename` deliberately does NOT reuse `sanitizeFilename` — that
 helper appends `_<chatId>` after the extension, turning `report.png` into
 `report.png_99`, a file no viewer opens. Pinned by eval-38, which also covers
 traversal.
+
+---
+
+## Amendment 2026-08-18 — D17: chats can be named by @username or link, everywhere
+
+DECIDED by the operator, binding, after the alternative was argued and declined:
+every command that takes a chat accepts a numeric id, an `@username`, a `t.me`
+link, or `me`. Including `send`. This narrows D13 clause 3 ("numeric peer ids
+only, never a name or @username"), which is hereby superseded.
+
+BECAUSE the id-only rule was applied uniformly to reads, where it bought little
+and cost a lot. The loop it forced was: run `peers find`, read a table by eye,
+retype nine digits, every single time, for `dump`, `media pull` and `watch` -
+none of which do anything irreversible. Asked whether the tool was usable by
+someone other than its author, the honest answer was no, and this was the
+largest reason.
+
+WHAT REPLACES THE RULE. "Ids only" was a *prevention* control: an unresolvable
+name cannot reach the wrong person. Its replacement is a *detection* control,
+and the substitution is only sound because of what is bolted to it:
+
+1. **Resolve then show.** Every command turns the reference into a concrete
+   identity and prints name, @handle and id together before acting. For sends
+   this is a blocking confirmation that names the resolved peer, and states when
+   the target came from a handle rather than an id.
+2. **Lookalikes are rejected at parse time, offline.** Telegram usernames are
+   ASCII by definition, so a Cyrillic "о" in `@durоv` is not a valid username at
+   all. `parsePeerRef` refuses it before any network call. This is the only
+   homoglyph defence that actually works here: a confirmation prompt cannot help,
+   because the resolved name of the impostor account would look equally correct.
+   Pinned by eval-63.
+3. **Resolution lives in the command layer, never in `src/send/`.** There remains
+   exactly one place where a reference becomes an identity and exactly one place
+   that identity is confirmed and logged. `assertPeerId` stays as the send
+   module's own boundary. Pinned by eval-33 and eval-65.
+
+RESIDUAL RISK, stated plainly: a *typo* in a handle that happens to be a real
+account (`@durvo` for `@durov`) still resolves, and the confirmation prompt is
+the only thing between that and a delivered message. Under the old rule this
+failure was impossible. That risk was raised, and the operator chose the
+ergonomics; the mitigation is that the prompt shows the full resolved identity
+rather than an unreadable number, which is strictly more legible than what it
+replaced.
+
+ALSO: `peers find --id-only` prints exactly one id for shell composition and
+REFUSES when the needle matches several chats, rather than picking the first.
+Silent first-match selection would reintroduce the wrong-person failure through
+the back door.

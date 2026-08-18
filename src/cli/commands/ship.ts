@@ -12,7 +12,7 @@ import { ship } from '../../ship/index.js'
 export function registerShipCommand(program: Command): void {
   program
     .command('ship')
-    .description('Capture new archive files into gbrain (run AFTER export, never during)')
+    .description('OPTIONAL: push new archive files into gbrain, an external knowledge base. Skip unless you use gbrain.')
     .option('--dry-run', 'Print what would be captured; exec nothing, move no watermark')
     .option('--all', 'Ignore the .last-ship watermark and re-ship everything (idempotent by slug)')
     .action(async (options) => {

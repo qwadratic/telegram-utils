@@ -4,8 +4,8 @@ import { MEDIA_KINDS } from '../../media/index.js'
 import { watchForMedia } from '../../watch/index.js'
 import { runCommand } from '../errors.js'
 import { OperatorError } from '../../errors.js'
-import { assertPeerId } from '../../peers/id.js'
-import { resolveSelfPeer, withAuthenticatedClient } from './shared.js'
+import { parsePeerRef } from '../../peers/ref.js'
+import { resolveTarget, withAuthenticatedClient } from './shared.js'
 
 /**
  * `tgu watch` - wait for media that has not been sent yet.
@@ -16,7 +16,7 @@ import { resolveSelfPeer, withAuthenticatedClient } from './shared.js'
  */
 export function registerWatchCommand(program: Command): void {
   program
-    .command('watch [peerId]')
+    .command('watch [peer]')
     .description('Wait for new media in a chat (default: your Saved Messages) and download it')
     .option('--to <dir>', 'Destination directory', 'media')
     .option('--kind <kinds>', `Comma-separated: ${MEDIA_KINDS.join(', ')}`)
@@ -24,7 +24,7 @@ export function registerWatchCommand(program: Command): void {
     .option('--interval <seconds>', 'Seconds between polls', '15')
     .option('--max <n>', 'Stop after this many files', '1')
     .option('--json', 'Machine-readable output')
-    .action(async (peerId: string | undefined, options) => {
+    .action(async (peer: string | undefined, options) => {
       await runCommand(async () => {
         const minutes = Number.parseInt(options.minutes, 10)
         const interval = Number.parseInt(options.interval, 10)
@@ -39,16 +39,17 @@ export function registerWatchCommand(program: Command): void {
           ? options.kind.split(',').map((k: string) => k.trim().toLowerCase()).filter(Boolean)
           : []
 
-        // Validated before the session: this command then holds the lock for up
-        // to 45 minutes, so failing on a typo afterwards would be expensive.
-        const explicitId = peerId ? assertPeerId(peerId) : null
+        // Shape-checked before the session: this command then holds the lock for
+        // up to 45 minutes, so failing on a typo afterwards would be expensive.
+        if (peer) parsePeerRef(peer)
 
         const files = await withAuthenticatedClient(async (tg) => {
-          const id = explicitId ?? (await resolveSelfPeer(tg))
+          const id = await resolveTarget(tg, peer, 'watching')
 
           // Progress goes to stderr so --json stdout stays a clean payload.
+          // resolveTarget already named the chat; this adds the terms of the wait.
           console.error(
-            chalk.cyan(`watching ${id} for new media -> ${options.to} (giving up in ${minutes}m)`)
+            chalk.cyan(`waiting for new media -> ${options.to} (giving up in ${minutes}m)`)
           )
           console.error(
             chalk.dim(`only messages posted after ${new Date().toISOString()} are eligible`)
