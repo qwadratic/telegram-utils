@@ -231,3 +231,55 @@ test('eval-76 the package name is one constant, matching package.json', () => {
     'src/update/index.ts still names the pre-rename package somewhere'
   )
 })
+
+test('eval-77 the registry request is shaped so it can actually succeed', async () => {
+  const { registryUrl, fetchLatestVersion, PACKAGE_NAME } = await import('../src/update/index.js')
+
+  // The slash in a scoped name is percent-encoded, which is the form npm's own
+  // clients send.
+  assert.equal(registryUrl('@qwadratic/tg'), 'https://registry.npmjs.org/@qwadratic%2ftg/latest')
+  assert.equal(registryUrl('chalk'), 'https://registry.npmjs.org/chalk/latest')
+  assert.ok(!registryUrl(PACKAGE_NAME).includes('@qwadratic/tg'), 'the raw slash must not survive')
+
+  // THE REGRESSION THIS EXISTS FOR: the abbreviated-packument accept header is
+  // only valid on the packument endpoint. Sent to /latest it returns 406 for
+  // every package, so every check failed and reported "could not reach the npm
+  // registry" - indistinguishable from being offline. No network here; the fetch
+  // is stubbed so the assertion is about the REQUEST we make.
+  let seen: { url: string; accept: string } | null = null
+  const stub = (async (url: string | URL, init?: RequestInit) => {
+    seen = {
+      url: String(url),
+      accept: String((init?.headers as Record<string, string>)?.accept ?? '')
+    }
+    return {
+      ok: true,
+      json: async () => ({ version: '9.9.9' })
+    } as unknown as Response
+  }) as unknown as typeof fetch
+
+  const version = await fetchLatestVersion('@qwadratic/tg', 3000, stub)
+
+  assert.equal(version, '9.9.9')
+  assert.equal(seen!.url, 'https://registry.npmjs.org/@qwadratic%2ftg/latest')
+  assert.ok(
+    !seen!.accept.includes('vnd.npm.install-v1'),
+    'the abbreviated-packument accept header returns 406 on the version endpoint'
+  )
+})
+
+test('eval-78 a failed registry call is silent and never throws', async () => {
+  const { fetchLatestVersion } = await import('../src/update/index.js')
+
+  const failures: Array<() => Promise<Response>> = [
+    async () => ({ ok: false, status: 404 }) as unknown as Response,
+    async () => { throw new Error('ENOTFOUND registry.npmjs.org') },
+    async () => ({ ok: true, json: async () => ({ nope: true }) }) as unknown as Response,
+    async () => ({ ok: true, json: async () => { throw new Error('bad json') } }) as unknown as Response
+  ]
+
+  for (const impl of failures) {
+    const result = await fetchLatestVersion('@qwadratic/tg', 500, impl as unknown as typeof fetch)
+    assert.equal(result, null, 'every failure mode resolves to null, never a rejection')
+  }
+})

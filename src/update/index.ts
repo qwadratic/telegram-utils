@@ -158,19 +158,42 @@ export function hasExhaustedAttempts(state: UpdateState, version: string): boole
   return state.lastAttemptVersion === version && (state.failures ?? 0) >= 2
 }
 
+/**
+ * The registry URL for a package's newest version.
+ *
+ * Two things here were wrong for the entire life of this feature, and both
+ * failed the same silent way - the check returned null and the CLI reported
+ * "could not reach the npm registry", which reads like a network problem:
+ *
+ * 1. The slash in a scoped name has to be percent-encoded. `@scope/name` does
+ *    happen to work today, but `%2f` is the documented form and the one npm's
+ *    own clients send.
+ * 2. The `application/vnd.npm.install-v1+json` accept header is only valid on
+ *    the PACKUMENT endpoint. Sending it to `/latest` returns 406 Not Acceptable
+ *    for every package, scoped or not. That header was the actual bug; the scope
+ *    merely made it visible, because before the rename nothing was published to
+ *    check against and the failure looked like "not published yet".
+ *
+ * The version endpoint is used rather than the abbreviated packument because it
+ * is a fixed size, while the packument grows with every release.
+ */
+export function registryUrl(packageName = PACKAGE_NAME): string {
+  return `https://registry.npmjs.org/${packageName.replace('/', '%2f')}/latest`
+}
+
 /** Ask the registry for the newest published version. Null on any failure. */
 export async function fetchLatestVersion(
   packageName = PACKAGE_NAME,
-  timeoutMs = 3000
+  timeoutMs = 3000,
+  fetchImpl: typeof fetch = fetch
 ): Promise<string | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    // The `latest` endpoint is a few hundred bytes, unlike the full packument.
-    const response = await fetch(`https://registry.npmjs.org/${packageName}/latest`, {
+    const response = await fetchImpl(registryUrl(packageName), {
       signal: controller.signal,
-      headers: { accept: 'application/vnd.npm.install-v1+json' }
+      headers: { accept: 'application/json' }
     })
     if (!response.ok) return null
 
@@ -179,6 +202,10 @@ export async function fetchLatestVersion(
   } catch {
     // Offline, DNS failure, timeout, registry outage: none are worth a word.
     return null
+  } finally {
+    // Without this the timer keeps the event loop alive for its full duration,
+    // adding up to three seconds to a command that has already finished.
+    clearTimeout(timer)
   }
 }
 
