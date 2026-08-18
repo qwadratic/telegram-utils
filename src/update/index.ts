@@ -209,17 +209,80 @@ export async function fetchLatestVersion(
   }
 }
 
-/** Run the global install. Resolves to true when npm exits 0. */
-export function installLatest(packageName = PACKAGE_NAME): Promise<boolean> {
+/**
+ * The npm prefix this copy is installed under.
+ *
+ * `npm install -g` targets the AMBIENT prefix, which is not necessarily the one
+ * the running binary lives in. Under nvm, or any install made with an explicit
+ * `--prefix`, the update then lands in a different tree: npm exits 0, the update
+ * reports success, and the binary on PATH is untouched forever. Observed
+ * exactly that - an isolated 0.3.1 stayed at 0.3.1 while 0.3.2 was written to
+ * the default nvm prefix.
+ *
+ * So the install is aimed at wherever THIS file is:
+ *   <prefix>/lib/node_modules/@qwadratic/tg/dist/update/index.js   (posix)
+ *   <prefix>/node_modules/@qwadratic/tg/dist/update/index.js       (windows)
+ */
+export function installPrefix(moduleUrl = import.meta.url): string | null {
+  const here = fileURLToPath(moduleUrl)
+  const marker = `${sep}node_modules${sep}${PACKAGE_NAME.split('/').join(sep)}${sep}`
+  const index = here.indexOf(marker)
+  if (index === -1) return null
+
+  const root = here.slice(0, index)
+  // npm nests globals under lib/ on posix and directly under the prefix on
+  // Windows; both spellings have to resolve to the prefix itself.
+  return root.endsWith(`${sep}lib`) ? root.slice(0, -`${sep}lib`.length) : root
+}
+
+/** The version currently on disk for this install, or null. */
+export function installedVersion(prefix: string, packageName = PACKAGE_NAME): string | null {
+  for (const middle of [join('lib', 'node_modules'), 'node_modules']) {
+    try {
+      const manifest = join(prefix, middle, ...packageName.split('/'), 'package.json')
+      const parsed = JSON.parse(readFileSync(manifest, 'utf-8')) as { version?: unknown }
+      if (typeof parsed.version === 'string') return parsed.version
+    } catch {
+      // Try the other layout.
+    }
+  }
+  return null
+}
+
+/**
+ * Run the global install, into THIS install's prefix.
+ *
+ * Resolves true only when the version on disk actually changed. npm's exit code
+ * is not enough: a zero exit against the wrong prefix is precisely the failure
+ * this function exists to avoid, and it would otherwise be recorded as a
+ * success and never retried.
+ */
+export function installLatest(
+  packageName = PACKAGE_NAME,
+  moduleUrl = import.meta.url
+): Promise<boolean> {
+  const prefix = installPrefix(moduleUrl)
+  const args = ['install', '-g', `${packageName}@latest`]
+  if (prefix) args.push('--prefix', prefix)
+
+  const before = prefix ? installedVersion(prefix, packageName) : null
+
   return new Promise((resolve) => {
-    const child = spawn('npm', ['install', '-g', `${packageName}@latest`], {
+    const child = spawn('npm', args, {
       stdio: 'ignore',
       // Detached so it survives if the parent is killed mid-install, which would
       // otherwise leave a half-written global package.
       detached: true
     })
     child.on('error', () => resolve(false))
-    child.on('close', (code) => resolve(code === 0))
+    child.on('close', (code) => {
+      if (code !== 0) return resolve(false)
+      if (!prefix) return resolve(true)
+
+      // Verify the outcome rather than trusting the exit code.
+      const after = installedVersion(prefix, packageName)
+      resolve(after !== null && after !== before)
+    })
   })
 }
 

@@ -283,3 +283,33 @@ test('eval-78 a failed registry call is silent and never throws', async () => {
     assert.equal(result, null, 'every failure mode resolves to null, never a rejection')
   }
 })
+
+test('eval-79 the update targets the prefix this copy lives in', async () => {
+  const { installPrefix } = await import('../src/update/index.js')
+
+  // npm install -g targets the AMBIENT prefix, which under nvm or any
+  // --prefix install is a DIFFERENT tree from the one the running binary is in.
+  // Observed: an isolated 0.3.1 stayed at 0.3.1 while 0.3.2 was written to the
+  // default nvm prefix, npm exited 0, and the update was recorded as a success.
+  assert.equal(
+    installPrefix('file:///Users/me/.nvm/versions/node/v24.18.0/lib/node_modules/@qwadratic/tg/dist/update/index.js'),
+    '/Users/me/.nvm/versions/node/v24.18.0'
+  )
+  assert.equal(
+    installPrefix('file:///usr/local/lib/node_modules/@qwadratic/tg/dist/update/index.js'),
+    '/usr/local'
+  )
+  // An isolated prefix, which is how the bug was reproduced.
+  assert.equal(
+    installPrefix('file:///tmp/sandbox/prefix/lib/node_modules/@qwadratic/tg/dist/update/index.js'),
+    '/tmp/sandbox/prefix'
+  )
+  // Windows nests globals directly under the prefix, with no lib/ segment.
+  assert.equal(
+    installPrefix('file:///C:/Users/me/AppData/Roaming/npm/node_modules/@qwadratic/tg/dist/update/index.js'),
+    '/C:/Users/me/AppData/Roaming/npm'
+  )
+
+  // A checkout has no prefix to install into, and must not invent one.
+  assert.equal(installPrefix('file:///home/me/projects/telegram-utils/src/update/index.ts'), null)
+})
