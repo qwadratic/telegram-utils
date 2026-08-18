@@ -24,10 +24,10 @@ sudo systemctl daemon-reload && sudo systemctl enable --now tg.timer
 ## /etc/tg.env (root:tg 0640)
 
 ```sh
-TGU_BRAIN_MAP=7=personal,12=proximata
+TG_BRAIN_MAP=7=personal,12=proximata
 ```
 
-`TGU_BRAIN_MAP` maps a Telegram folder id to a gbrain source id. A file whose
+`TG_BRAIN_MAP` maps a Telegram folder id to a gbrain source id. A file whose
 `folder_ids` contains an unmapped folder **fails the run**; ship never picks a
 default brain, because a private chat landing quietly in the wrong brain is the
 one failure nobody would notice.

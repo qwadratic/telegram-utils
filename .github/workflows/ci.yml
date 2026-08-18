@@ -120,4 +120,4 @@ jobs:
           # Updates must be inert in CI, or a build agent swaps versions mid-run.
           tg update 2>&1 | grep -q 'skipped in CI' && echo "update gate ok"
         env:
-          TGU_NON_INTERACTIVE: '1'
+          TG_NON_INTERACTIVE: '1'

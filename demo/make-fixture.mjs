@@ -90,7 +90,7 @@ writeFileSync(
 
 // Fake credentials, so the demo resolves API config from .env and never reaches
 // a real vault. dotenv loads this because the CLI runs with cwd = workspace.
-// The demo passes TGU_NON_INTERACTIVE per command rather than setting it
+// The demo passes TG_NON_INTERACTIVE per command rather than setting it
 // here, so the recording can show both the interactive picker and the
 // unattended guard.
 writeFileSync(

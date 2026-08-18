@@ -82,7 +82,7 @@ Get the folder ids from `tg folders list`, then put them in `/etc/tg.env`
 (VM) or your shell (local):
 
 ```sh
-export TGU_BRAIN_MAP="7=personal,12=proximata"
+export TG_BRAIN_MAP="7=personal,12=proximata"
 tg ship --dry-run      # prints slug -> source per file, execs nothing
 tg ship
 ```

@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import type { Message } from '@mtcute/node'
 import { ensureArchiveDir, getArchivePath } from '../utils/archive-path.js'
 import { writeFileAtomic } from '../utils/atomic.js'
+import { ARCHIVE_FILE_MODE } from '../utils/archive-path.js'
 import { formatMessage } from './format.js'
 import { buildEmptyFrontmatter, buildFrontmatter, type FolderRef } from './frontmatter.js'
 import { sortMessagesChronological } from './sort.js'
@@ -40,7 +41,7 @@ export async function writeChatFile(
   if (messages.length === 0) {
     const filePath = getArchivePath(chatName, chatId)
     const content = `${buildEmptyFrontmatter(chatName, chatId, folders)}No messages.\n`
-    writeFileAtomic(filePath, content)
+    writeFileAtomic(filePath, content, ARCHIVE_FILE_MODE)
     return { filesWritten: 1, messagesWritten: 0 }
   }
 
@@ -64,7 +65,7 @@ export async function writeChatFile(
   )
   content += buildMessageBody(orderedMessages)
 
-  writeFileAtomic(filePath, content)
+  writeFileAtomic(filePath, content, ARCHIVE_FILE_MODE)
 
   return { filesWritten: 1, messagesWritten: orderedMessages.length }
 }
@@ -77,6 +78,6 @@ export function writeCombinedArchiveFile(
   content: string
 ): string {
   const filePath = join(ensureArchiveDir(), fileName)
-  writeFileAtomic(filePath, content)
+  writeFileAtomic(filePath, content, ARCHIVE_FILE_MODE)
   return filePath
 }

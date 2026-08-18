@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+import { setting } from './env.js'
 
 /**
  * Every path this tool reads or writes, derived from one root.
@@ -12,7 +13,7 @@ import { join } from 'node:path'
  *
  *   backlog/decisions/2026-08-05-consolidate-on-telegram-utils.md, D6:
  *   "the data root is a hard-coded relative path. Ceiling: it breaks when two
- *    things on one host need different roots. Upgrade path: TGU_DATA_DIR in
+ *    things on one host need different roots. Upgrade path: TG_DATA_DIR in
  *    src/utils/archive-path.ts plus the three other path consts."
  *
  * WHY the default stays RELATIVE: `data` (not an absolute path) means every
@@ -23,7 +24,7 @@ import { join } from 'node:path'
  * Read once at module load, on purpose: a single run must not change roots
  * halfway through and leave a watermark in one tree and an archive in another.
  */
-export const DATA_DIR = process.env.TGU_DATA_DIR?.trim() || 'data'
+export const DATA_DIR = setting('DATA_DIR')?.trim() || 'data'
 
 /** Local encrypted cache: auth key plus the resolved peer table. */
 export const SESSION_DB_PATH = join(DATA_DIR, 'session.db')

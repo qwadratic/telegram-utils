@@ -221,8 +221,8 @@ test('eval-65 the send commands resolve a peer before calling the send module', 
 })
 
 test('eval-34 a non-interactive send is refused without --yes', () => {
-  const original = process.env.TGU_NON_INTERACTIVE
-  process.env.TGU_NON_INTERACTIVE = '1'
+  const original = process.env.TG_NON_INTERACTIVE
+  process.env.TG_NON_INTERACTIVE = '1'
 
   try {
     assert.throws(
@@ -232,8 +232,8 @@ test('eval-34 a non-interactive send is refused without --yes', () => {
     // --yes is the caller taking responsibility on the record.
     assert.doesNotThrow(() => assertConfirmed({ yes: true }))
   } finally {
-    if (original === undefined) delete process.env.TGU_NON_INTERACTIVE
-    else process.env.TGU_NON_INTERACTIVE = original
+    if (original === undefined) delete process.env.TG_NON_INTERACTIVE
+    else process.env.TG_NON_INTERACTIVE = original
   }
 })
 

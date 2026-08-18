@@ -13,7 +13,7 @@ import { canPrompt } from '../session/index.js'
  */
 
 /** Per-run cap. A loop that goes wrong stops here. */
-export const MAX_SENDS_PER_RUN = Number(process.env.TGU_MAX_SENDS_PER_RUN ?? 5)
+export const MAX_SENDS_PER_RUN = Number(process.env.TG_MAX_SENDS_PER_RUN ?? 5)
 
 /**
  * Per-day cap, counted from the send log.
@@ -23,7 +23,7 @@ export const MAX_SENDS_PER_RUN = Number(process.env.TGU_MAX_SENDS_PER_RUN ?? 5)
  * ban. The operator's own stated ceiling for outreach was three a day; twenty
  * leaves room for ordinary conversation without leaving room for a runaway.
  */
-export const MAX_SENDS_PER_DAY = Number(process.env.TGU_MAX_SENDS_PER_DAY ?? 20)
+export const MAX_SENDS_PER_DAY = Number(process.env.TG_MAX_SENDS_PER_DAY ?? 20)
 
 /** One line of the send log. Never contains message content. */
 export interface SentRecord {
@@ -112,7 +112,7 @@ export function assertUnderCaps(): void {
   if (sentThisRun >= MAX_SENDS_PER_RUN) {
     throw new OperatorError(
       `Per-run send cap reached (${MAX_SENDS_PER_RUN}).\n` +
-      '  Raise it deliberately with TGU_MAX_SENDS_PER_RUN if this is intended.'
+      '  Raise it deliberately with TG_MAX_SENDS_PER_RUN if this is intended.'
     )
   }
 
@@ -121,7 +121,7 @@ export function assertUnderCaps(): void {
     throw new OperatorError(
       `Daily send cap reached (${today}/${MAX_SENDS_PER_DAY} in the last 24h).\n` +
       '  Telegram limits outbound messaging from user accounts, and a burst is\n' +
-      '  what earns a report. Raise with TGU_MAX_SENDS_PER_DAY if intended.'
+      '  what earns a report. Raise with TG_MAX_SENDS_PER_DAY if intended.'
     )
   }
 }

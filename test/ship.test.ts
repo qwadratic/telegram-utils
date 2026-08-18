@@ -21,7 +21,7 @@ const SRC = fileURLToPath(new URL('../src/', import.meta.url))
 // Every test writes into its own temp dir, but the heartbeat path defaults to
 // the real ~/.gbrain. Redirect it once, here, so the suite never appends a
 // line to a human's actual brain.
-process.env.TGU_HEARTBEAT_PATH = join(mkdtempSync(join(tmpdir(), 'tg-beat-')), 'heartbeat.jsonl')
+process.env.TG_HEARTBEAT_PATH = join(mkdtempSync(join(tmpdir(), 'tg-beat-')), 'heartbeat.jsonl')
 
 function page(folderIds: string, body = 'hello'): string {
   return `---\ntype: note\ntitle: "T"\nchat_id: 1\nfolder_ids: ${folderIds}\n---\n\n${body}\n`
@@ -135,7 +135,7 @@ test('eval-44 an unroutable file fails loudly instead of defaulting to a brain',
     writeFileSync(join('archive', 'orphan_9.md'), page('[99]'))
     assert.throws(
       () => planShip({ archiveDir: 'archive', since: 0, brainMap: parseBrainMap('7=personal') }),
-      /not in TGU_BRAIN_MAP/
+      /not in TG_BRAIN_MAP/
     )
   })
 })
@@ -212,6 +212,20 @@ test('eval-47 --dry-run execs nothing and moves no watermark', async () => {
  * a Telegram credential. A grep of one file would miss a credential reached
  * three imports deep, so this walks the whole closure.
  */
+/**
+ * The Telegram secret names, read out of the one module that defines them.
+ *
+ * Derived rather than hardcoded: a new secret added to src/session/psst.ts is
+ * covered by eval-48 the moment it exists, with nobody having to remember.
+ */
+const SECRET_NAMES = (() => {
+  const psst = readFileSync(resolve(SRC, 'session/psst.ts'), 'utf-8')
+  const block = psst.slice(psst.indexOf('export const SECRETS'), psst.indexOf('} as const'))
+  const names = [...block.matchAll(/'([A-Z][A-Z0-9_]+)'/g)].map((m) => m[1])
+  if (names.length < 4) throw new Error(`could not read SECRETS from psst.ts, got ${names.length}`)
+  return names
+})()
+
 test('eval-48 the ship import graph contains no session, client or mtcute module', () => {
   const seen = new Set<string>()
   const queue = [resolve(SRC, 'ship/index.ts'), resolve(SRC, 'cli/commands/ship.ts')]
@@ -240,9 +254,21 @@ test('eval-48 the ship import graph contains no session, client or mtcute module
       !/\/(session|client\.ts|storage)/.test(file.slice(SRC.length - 1)),
       `${file} is reachable from ship: the gbrain path must not import the session layer`
     )
+    // Checks the SECRET NAMES, not the TG_ prefix. The prefix was a proxy that
+    // stopped working the day settings moved to TG_ too: TG_BRAIN_MAP is ship's
+    // own configuration, not a credential, and a prefix test flagged it. The
+    // list is derived from src/session/psst.ts so adding a secret there extends
+    // this gate automatically instead of silently leaving a hole.
+    const source = readFileSync(file, 'utf-8')
+    for (const secret of SECRET_NAMES) {
+      assert.ok(
+        !source.includes(secret),
+        `${file} is reachable from ship and names the Telegram secret ${secret}`
+      )
+    }
     assert.ok(
-      !/TG_[A-Z_]+|readSecret|SESSION_DB_PATH/.test(readFileSync(file, 'utf-8')),
-      `${file} is reachable from ship and names a Telegram secret`
+      !/readSecret|SESSION_DB_PATH/.test(source),
+      `${file} is reachable from ship and reaches for the credential store`
     )
   }
 })
@@ -252,8 +278,8 @@ test('eval-49 every run appends exactly one heartbeat line, success or failure',
     mkdirSync('archive', { recursive: true })
     writePage(join('archive', 'a_1.md'), '[7]')
     const beat = join(dir, 'heartbeat.jsonl')
-    const previous = process.env.TGU_HEARTBEAT_PATH
-    process.env.TGU_HEARTBEAT_PATH = beat
+    const previous = process.env.TG_HEARTBEAT_PATH
+    process.env.TG_HEARTBEAT_PATH = beat
 
     try {
       ship({ archiveDir: 'archive', brainMap: parseBrainMap('7=personal'), gbrainBin: fakeGbrain(dir) })
@@ -265,7 +291,7 @@ test('eval-49 every run appends exactly one heartbeat line, success or failure',
         gbrainBin: fakeGbrain(dir)
       }))
     } finally {
-      process.env.TGU_HEARTBEAT_PATH = previous
+      process.env.TG_HEARTBEAT_PATH = previous
     }
 
     const lines = readFileSync(beat, 'utf-8').trim().split('\n').map((l) => JSON.parse(l))
@@ -278,4 +304,29 @@ test('eval-49 every run appends exactly one heartbeat line, success or failure',
       assert.ok(line.details, 'a heartbeat with no details says nothing')
     }
   })
+})
+
+test('eval-84 the gbrain child never inherits a Telegram credential', async () => {
+  // The decision log states the boundary as a PROCESS boundary and enforces it
+  // with an import-graph eval. The import graph was clean and the boundary still
+  // leaked: spawnSync with no `env` hands the child the parent's WHOLE
+  // environment, and under `psst run` that contains TG_SESSION_STRING. gbrain
+  // was receiving a full Telegram credential on every capture. An import graph
+  // cannot see that; only an allowlist can.
+  const source = readFileSync(resolve(SRC, 'ship/index.ts'), 'utf-8')
+
+  // Every spawn on this path must pass an explicit env.
+  const spawns = [...source.matchAll(/spawnSync\s*\(/g)]
+  assert.ok(spawns.length > 0, 'expected at least one spawn to guard')
+  assert.ok(
+    !/stdio:\s*\[[^\]]*\]\s*\}/.test(source.replace(/env:\s*childEnv\(\)/g, 'ENVOK')),
+    'a spawn on the gbrain path has no explicit env: it would inherit the credential'
+  )
+
+  // And the allowlist must not contain anything from the secret namespace.
+  const allowlist = source.slice(source.indexOf('const allowed = ['), source.indexOf('  ]', source.indexOf('const allowed = [')))
+  for (const secret of SECRET_NAMES) {
+    assert.ok(!allowlist.includes(secret), `${secret} is on the gbrain env allowlist`)
+  }
+  assert.ok(!/TG_SESSION|API_HASH|API_ID/.test(allowlist), 'no Telegram credential may be forwarded')
 })

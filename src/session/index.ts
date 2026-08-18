@@ -6,6 +6,7 @@ import { acquireLock } from './lock.js'
 import { OperatorError } from '../errors.js'
 import { SESSION_DB_PATH } from './cache.js'
 import { getOrCreateDbKey, psstAvailable, readSecret, writeSecret, SECRETS } from './psst.js'
+import { setting } from '../env.js'
 
 /** Where this run's authorisation came from. */
 export type SessionSource =
@@ -17,11 +18,11 @@ export type SessionSource =
  * Would a login prompt actually reach a human?
  *
  * A TTY alone is not enough: an agent or CI job often runs with a pty attached
- * and would sit forever on "Enter your phone number". TGU_NON_INTERACTIVE=1
+ * and would sit forever on "Enter your phone number". TG_NON_INTERACTIVE=1
  * is the explicit way such a caller says "fail instead of asking".
  */
 export function canPrompt(): boolean {
-  if (process.env.TGU_NON_INTERACTIVE === '1') return false
+  if (setting('NON_INTERACTIVE') === '1') return false
   return Boolean(process.stdin.isTTY)
 }
 

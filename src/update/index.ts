@@ -45,7 +45,7 @@ export const PACKAGE_NAME = '@qwadratic/tg'
 
 /** Where the check state lives: per USER, not per workspace, since the install is global. */
 export function stateDir(): string {
-  return process.env.TGU_STATE_DIR?.trim() || join(homedir(), '.tg')
+  return process.env.TG_STATE_DIR?.trim() || join(homedir(), '.tg')
 }
 
 export function stateFile(): string {
@@ -189,13 +189,13 @@ export type SkipReason =
 /**
  * Should this process touch updates at all?
  *
- * `TGU_NO_UPDATE=1` is the explicit opt-out. CI is excluded because a build
+ * `TG_NO_UPDATE=1` is the explicit opt-out. CI is excluded because a build
  * agent installing a different version mid-pipeline makes that pipeline
  * unreproducible. A git checkout is excluded because `npm install -g` would
  * silently replace the developer's working copy with a published release.
  */
 export function updateSkipReason(env = process.env): SkipReason {
-  if (env.TGU_NO_UPDATE === '1' || env.NO_UPDATE_NOTIFIER === '1') return 'disabled'
+  if (env.TG_NO_UPDATE === '1' || env.NO_UPDATE_NOTIFIER === '1') return 'disabled'
   if (env.CI === 'true' || env.CI === '1') return 'ci'
   if (!isGlobalInstall()) return 'not-a-global-install'
   return null
@@ -218,7 +218,7 @@ export function isGlobalInstall(moduleUrl = import.meta.url): boolean {
 
 /** Has enough time passed to ask the registry again? */
 export function isCheckDue(state: UpdateState, now = Date.now(), env = process.env): boolean {
-  const hours = Number(env.TGU_UPDATE_INTERVAL_HOURS ?? 24)
+  const hours = Number(env.TG_UPDATE_INTERVAL_HOURS ?? 24)
   const interval = (Number.isFinite(hours) && hours > 0 ? hours : 24) * 3600_000
 
   if (!state.lastCheckAt) return true
@@ -402,7 +402,7 @@ export function installLatest(
  */
 export function updateNotice(current: string, latest: string, auto: boolean): string {
   return auto
-    ? `tg ${latest} is available (you have ${current}); updating in the background. Disable with TGU_NO_UPDATE=1`
+    ? `tg ${latest} is available (you have ${current}); updating in the background. Disable with TG_NO_UPDATE=1`
     : `tg ${latest} is available (you have ${current}). Run: npm install -g ${PACKAGE_NAME}@latest`
 }
 
@@ -496,7 +496,7 @@ export interface UpdateOutcome {
  *
  * A skip reason ALWAYS wins, even for an explicitly typed `tg update`. Asking
  * by hand is not a reason to install over a git checkout, to ignore
- * TGU_NO_UPDATE, or to swap versions inside a CI job - in CI in particular
+ * TG_NO_UPDATE, or to swap versions inside a CI job - in CI in particular
  * nobody typed anything, some script did.
  *
  * `force` therefore does one thing only: it retries a version that automatic

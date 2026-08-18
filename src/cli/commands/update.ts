@@ -36,7 +36,7 @@ export function registerUpdateCommand(program: Command, currentVersion: string):
           return
         }
         if (outcome.skipped === 'disabled') {
-          console.log('Updates are disabled here (TGU_NO_UPDATE=1).')
+          console.log('Updates are disabled here (TG_NO_UPDATE=1).')
           return
         }
         if (outcome.skipped === 'ci') {

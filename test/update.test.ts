@@ -38,7 +38,7 @@ test('eval-66 version comparison orders releases and keeps prereleases below the
 })
 
 test('eval-67 updates are skipped in CI, when disabled, and outside a global install', () => {
-  assert.equal(updateSkipReason({ TGU_NO_UPDATE: '1' } as never), 'disabled')
+  assert.equal(updateSkipReason({ TG_NO_UPDATE: '1' } as never), 'disabled')
   assert.equal(updateSkipReason({ NO_UPDATE_NOTIFIER: '1' } as never), 'disabled')
   // A build agent that silently installs a different version makes its own
   // pipeline unreproducible.
@@ -60,9 +60,9 @@ test('eval-68 the check interval is honoured and a missing or corrupt state re-c
   assert.equal(isCheckDue({ lastCheckAt: at(25) }, now, {} as never), true, 'checked yesterday')
 
   // Interval is configurable, and nonsense falls back to the default.
-  const env = { TGU_UPDATE_INTERVAL_HOURS: '1' } as never
+  const env = { TG_UPDATE_INTERVAL_HOURS: '1' } as never
   assert.equal(isCheckDue({ lastCheckAt: at(2) }, now, env), true)
-  const bad = { TGU_UPDATE_INTERVAL_HOURS: 'soon' } as never
+  const bad = { TG_UPDATE_INTERVAL_HOURS: 'soon' } as never
   assert.equal(isCheckDue({ lastCheckAt: at(2) }, now, bad), false, 'falls back to 24h')
 })
 
@@ -95,7 +95,7 @@ test('eval-70 update state survives a round trip and tolerates a corrupt file', 
 
 test('eval-71 the update notice never implies an install that will not happen', () => {
   assert.match(updateNotice('0.3.0', '0.4.0', true), /updating in the background/)
-  assert.match(updateNotice('0.3.0', '0.4.0', true), /TGU_NO_UPDATE=1/)
+  assert.match(updateNotice('0.3.0', '0.4.0', true), /TG_NO_UPDATE=1/)
   // After the attempts are exhausted the notice must tell the truth and hand
   // over the manual command instead of promising another silent retry.
   assert.match(updateNotice('0.3.0', '0.4.0', false), /npm install -g @qwadratic\/tg@latest/)
@@ -167,7 +167,7 @@ test('eval-73 the notice never promises a background update that will not happen
 
 test('eval-74 a skip reason wins even over an explicitly typed update', async () => {
   // `tg update` typed by a human must still not install over a git checkout,
-  // ignore TGU_NO_UPDATE, or swap versions inside a CI job - in CI nobody typed
+  // ignore TG_NO_UPDATE, or swap versions inside a CI job - in CI nobody typed
   // anything, some script did. force only retries a version that automatic
   // attempts gave up on.
   const { runUpdateCheck } = await import('../src/update/index.js')
@@ -384,4 +384,41 @@ test('eval-82 the update command does not also spawn a background installer', as
     /argv\.includes\('--background-update-check'\)/.test(schedule),
     'and it must never recurse into the background worker'
   )
+})
+
+test('eval-83 the old TGU_ setting names still work, loudly', async () => {
+  const { setting, resetSettingWarnings } = await import('../src/env.js')
+
+  // The command was renamed tgu -> tg, so its settings followed. But the
+  // operator's agent instructions in OTHER repositories pass
+  // TGU_NON_INTERACTIVE=1, and if that silently stopped being read an
+  // unattended run would stop failing fast and start HANGING forever on a phone
+  // number prompt. A rename whose failure mode is a hang needs a bridge.
+  resetSettingWarnings()
+
+  assert.equal(setting('NON_INTERACTIVE', { TG_NON_INTERACTIVE: '1' } as never), '1')
+  assert.equal(setting('NON_INTERACTIVE', { TGU_NON_INTERACTIVE: '1' } as never), '1', 'legacy still read')
+
+  // The new name wins when both are set, so a half-migrated environment
+  // resolves toward the future rather than the past.
+  assert.equal(
+    setting('NON_INTERACTIVE', { TG_NON_INTERACTIVE: 'new', TGU_NON_INTERACTIVE: 'old' } as never),
+    'new'
+  )
+
+  // Empty is not a value: an exported-but-blank var must not mask the fallback.
+  assert.equal(setting('DATA_DIR', { TG_DATA_DIR: '', TGU_DATA_DIR: 'legacy' } as never), 'legacy')
+  assert.equal(setting('DATA_DIR', {} as never), undefined, 'callers keep their own defaults')
+
+  // No setting name may collide with a vault SECRET name, or a config lookup
+  // and a credential lookup would fight over the same variable.
+  const secrets = ['SESSION_STRING', 'SESSION_DB_KEY', 'API_ID', 'API_HASH']
+  const settings = [
+    'NON_INTERACTIVE', 'DATA_DIR', 'BRAIN_MAP', 'HEARTBEAT_PATH',
+    'MAX_SENDS_PER_RUN', 'MAX_SENDS_PER_DAY', 'NO_UPDATE',
+    'UPDATE_INTERVAL_HOURS', 'STATE_DIR'
+  ]
+  for (const s of settings) {
+    assert.ok(!secrets.includes(s), `${s} collides with a vault secret name`)
+  }
 })

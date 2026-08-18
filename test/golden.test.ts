@@ -16,6 +16,7 @@ import { test } from 'node:test'
 import assert from 'node:assert'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { assertGolden, withTempDir } from './helpers.js'
 import { AWKWARD_NAMES, CHAT_ID, CHAT_NAME, CONVERSATION, FOLDERS, UNSORTED, seededState } from './fixtures/corpus.js'
 import { writeChatFile } from '../src/messages/writer.js'
@@ -342,5 +343,33 @@ test('no eval creates a session database', async () => {
       '',
       'an eval created a session database; evals must never touch Telegram'
     )
+  })
+})
+
+test('eval-85 archive files are 0600 and the archive dir is 0700', async () => {
+  // The archive is every message this workspace has exported. It had been 0755
+  // with 0644 files for its whole life: 189MB of real private conversations,
+  // world-readable on a shared machine. sync-state.json next to it was already
+  // 0600, so the watermark pointing AT the messages was better protected than
+  // the messages.
+  await withTempDir(async () => {
+    const { appendToChatFile } = await import('../src/sync/append.js')
+
+    await writeChatFile(CHAT_NAME, CHAT_ID, CONVERSATION, [])
+
+    const dir = 'data/archive'
+    assert.equal(statSync(dir).mode & 0o777, 0o700, 'archive dir must be 0700')
+
+    const files = readdirSync(dir).filter((f) => f.endsWith('.md'))
+    assert.ok(files.length > 0, 'expected a chat file')
+    for (const f of files) {
+      assert.equal(statSync(join(dir, f)).mode & 0o777, 0o600, `${f} must be 0600`)
+    }
+
+    // An APPEND must not widen it either: that is the path that runs daily.
+    await appendToChatFile(CHAT_NAME, CHAT_ID, CONVERSATION, [])
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.md'))) {
+      assert.equal(statSync(join(dir, f)).mode & 0o777, 0o600, `${f} widened on append`)
+    }
   })
 })

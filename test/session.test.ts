@@ -157,7 +157,7 @@ test('relativeTime renders coarse buckets and handles never', () => {
 })
 
 test('readSecret prefers an injected env var and reports absence as null', () => {
-  const name = 'TGU_TEST_SECRET_DO_NOT_STORE'
+  const name = 'TG_TEST_SECRET_DO_NOT_STORE'
   process.env[name] = '  injected-value  '
   try {
     assert.equal(readSecret(name), 'injected-value', 'env injection should win and be trimmed')
@@ -167,17 +167,17 @@ test('readSecret prefers an injected env var and reports absence as null', () =>
 
   // Absent everywhere: no vault entry, and possibly no psst at all. Either way
   // the contract is null rather than a throw, so callers can fall back.
-  assert.equal(readSecret('TGU_TEST_SECRET_THAT_IS_NEVER_SET'), null)
+  assert.equal(readSecret('TG_TEST_SECRET_THAT_IS_NEVER_SET'), null)
 })
 
-test('TGU_NON_INTERACTIVE gates prompting, and the old name is dead', () => {
+test('TG_NON_INTERACTIVE gates prompting, and the old name is dead', () => {
   // canPrompt needs a tty to have anything to suppress.
   const tty = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY')
   Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true })
   const before = { ...process.env }
 
   try {
-    delete process.env.TGU_NON_INTERACTIVE
+    delete process.env.TG_NON_INTERACTIVE
     delete process.env.SYMBIOTIC_NON_INTERACTIVE
     assert.equal(canPrompt(), true, 'a tty with no guard set may prompt')
 
@@ -186,8 +186,8 @@ test('TGU_NON_INTERACTIVE gates prompting, and the old name is dead', () => {
     process.env.SYMBIOTIC_NON_INTERACTIVE = '1'
     assert.equal(canPrompt(), true, 'the retired variable must have no effect')
 
-    process.env.TGU_NON_INTERACTIVE = '1'
-    assert.equal(canPrompt(), false, 'TGU_NON_INTERACTIVE=1 must suppress prompting')
+    process.env.TG_NON_INTERACTIVE = '1'
+    assert.equal(canPrompt(), false, 'TG_NON_INTERACTIVE=1 must suppress prompting')
   } finally {
     process.env = before
     if (tty) Object.defineProperty(process.stdin, 'isTTY', tty)

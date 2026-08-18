@@ -55,8 +55,8 @@ send log.
 ~/chats/personal/data/    <- a different one
 ```
 
-`cd` selects the workspace. No flag, no global config. Set `TGU_DATA_DIR` to
-point the data root somewhere else, e.g. `TGU_DATA_DIR=/srv/tg` for a service.
+`cd` selects the workspace. No flag, no global config. Set `TG_DATA_DIR` to
+point the data root somewhere else, e.g. `TG_DATA_DIR=/srv/tg` for a service.
 
 **Each workspace logs in separately and owns its own auth key.** This is the
 important rule and the reason `init` does not offer to copy a session:
@@ -152,7 +152,7 @@ Cutoff shortcuts, accepted anywhere a date is: `today`, `yesterday`,
 
 `ship` runs AFTER an export has exited, never during: it is a separate process
 that holds no Telegram credential. It needs
-`TGU_BRAIN_MAP="<folderId>=<gbrainSource>,..."`, and a file whose folder is
+`TG_BRAIN_MAP="<folderId>=<gbrainSource>,..."`, and a file whose folder is
 unmapped fails the run rather than picking a brain. See `deploy/README.md`.
 
 ## Sending
@@ -178,8 +178,8 @@ Five guards, each one enforced by a test:
    reaches the network.
 3. **Unattended runs need `--yes`.** Without a human to ask and without the flag,
    the send is refused rather than assumed.
-4. **Capped.** 5 per run and 20 per day (`TGU_MAX_SENDS_PER_RUN`,
-   `TGU_MAX_SENDS_PER_DAY`). Failed attempts count too, because a retry loop
+4. **Capped.** 5 per run and 20 per day (`TG_MAX_SENDS_PER_RUN`,
+   `TG_MAX_SENDS_PER_DAY`). Failed attempts count too, because a retry loop
    against a peer that rejects is exactly what draws a report.
 5. **Logged.** Every attempt appends to `data/sent.jsonl`, mode `0600`, recording
    the peer, kind, size and outcome — never the message content.
@@ -235,7 +235,7 @@ run at the same time.
 
 ## Automation
 
-- `TGU_NON_INTERACTIVE=1` turns "ask the user" into a clear failure. Set it in
+- `TG_NON_INTERACTIVE=1` turns "ask the user" into a clear failure. Set it in
   cron jobs and agent runs, which often have a pty and would otherwise hang
   forever on a phone-number prompt.
 - `--json` is machine-readable on every read verb; stdout carries only the payload.
@@ -261,8 +261,8 @@ The new version applies to your **next** command, not the running one.
 Turn it off:
 
 ```sh
-export TGU_NO_UPDATE=1                 # never check, never install
-export TGU_UPDATE_INTERVAL_HOURS=168   # or just check less often
+export TG_NO_UPDATE=1                 # never check, never install
+export TG_UPDATE_INTERVAL_HOURS=168   # or just check less often
 ```
 
 If an update is interrupted part way through - the machine sleeps, the terminal
@@ -290,7 +290,7 @@ can verify what you got:
 npm view @qwadratic/tg --json | jq .dist.attestations
 ```
 
-If that trade is not one you want, `TGU_NO_UPDATE=1` leaves you in full control.
+If that trade is not one you want, `TG_NO_UPDATE=1` leaves you in full control.
 
 ## Development
 

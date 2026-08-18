@@ -9,11 +9,11 @@ There is no session password prompt. `openSession()` in `src/session/index.ts`
 resolves auth from the psst vault or the local cache. If a command asks you for
 anything, that is a bug.
 
-Always set `TGU_NON_INTERACTIVE=1`. Without it, a run with a pty attached that
+Always set `TG_NON_INTERACTIVE=1`. Without it, a run with a pty attached that
 has no session will stop on "Enter your phone number" and wait forever.
 
 ```sh
-TGU_NON_INTERACTIVE=1 tg folders list --json
+TG_NON_INTERACTIVE=1 tg folders list --json
 ```
 
 Only a human can create a session, because only a human receives the login code.
@@ -62,7 +62,7 @@ person, so it has rules that are enforced by `test/trust.test.ts`, not by taste:
 - **Do not pass `--yes` to route around a refusal.** `--yes` is the operator
   stating that an unattended send is intended. If you are an agent and a send was
   refused, that refusal is the feature. Report it and ask.
-- **Do not raise `TGU_MAX_SENDS_PER_RUN` or `TGU_MAX_SENDS_PER_DAY`** to get a
+- **Do not raise `TG_MAX_SENDS_PER_RUN` or `TG_MAX_SENDS_PER_DAY`** to get a
   batch through. The caps exist because a burst of outbound messages from a user
   account is what earns a report and a ban.
 - **Do not resolve a peer inside `src/send/`.** Resolution happens in the command
@@ -82,7 +82,7 @@ sending anything in a series.
 ## Do not fight the updater
 
 A global install updates itself daily in a detached background process. If you
-are scripting `tg`, set `TGU_NO_UPDATE=1` for reproducibility rather than
+are scripting `tg`, set `TG_NO_UPDATE=1` for reproducibility rather than
 letting a version change under a long workflow. `CI=true` already does this.
 
 Never call `npm install -g @qwadratic/tg` yourself to "fix" a version notice:
@@ -104,7 +104,7 @@ That is intended. Do not start an export beside it.
 
 | path | role |
 | --- | --- |
-| `src/paths.ts` | every data path, derived from `TGU_DATA_DIR`. Add new paths HERE |
+| `src/paths.ts` | every data path, derived from `TG_DATA_DIR`. Add new paths HERE |
 | `src/session/psst.ts` | vault access; the only place that shells out to `psst` |
 | `src/session/lock.ts` | single-instance lock |
 | `src/session/cache.ts` | local encrypted cache and peer-count helpers |
@@ -123,7 +123,7 @@ That is intended. Do not start an export beside it.
 | `src/update/index.ts` | self-update: cache, version compare, detached worker |
 | `src/cli/commands/` | one file per command group, registered in `src/index.ts` |
 
-Data paths resolve against `TGU_DATA_DIR`, default `data`, which is relative — so
+Data paths resolve against `TG_DATA_DIR`, default `data`, which is relative — so
 they resolve against the current directory at the moment of the call. That is how
 `cd` selects a workspace. Keep the default relative.
 

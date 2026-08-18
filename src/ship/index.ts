@@ -21,6 +21,39 @@ import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { OperatorError } from '../errors.js'
 
+/**
+ * The environment handed to gbrain, built by allowlist.
+ *
+ * The security boundary in the decision log is stated as a PROCESS boundary:
+ * "nothing talking to gbrain may hold a Telegram credential", enforced by an
+ * import-graph eval. The import graph was clean and the boundary still leaked,
+ * because `spawnSync` with no `env` hands the child the parent's entire
+ * environment. Under `psst run`, or with a .env loaded by src/index.ts, that
+ * environment contains the session string - so gbrain was receiving a full
+ * Telegram credential it has no use for, on every single capture.
+ *
+ * An import graph cannot see this. Only an allowlist can, so the child gets the
+ * variables it actually needs and nothing else. Pinned by eval-84.
+ */
+function childEnv(): NodeJS.ProcessEnv {
+  const allowed = [
+    'PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'LC_ALL',
+    'TZ', 'TERM',
+    // gbrain's own configuration and credentials, which are not ours.
+    'GBRAIN_HOME', 'GBRAIN_SOURCE', 'GBRAIN_DATABASE_URL', 'GBRAIN_API_KEY',
+    'XDG_CONFIG_HOME', 'XDG_DATA_HOME',
+    // Proxy settings, or a captive network breaks the capture with no clue why.
+    'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy'
+  ]
+
+  const env: NodeJS.ProcessEnv = {}
+  for (const key of allowed) {
+    const value = process.env[key]
+    if (value !== undefined) env[key] = value
+  }
+  return env
+}
+
 /** Written after a fully successful run; its mtime is the ship watermark. */
 export const SHIP_STAMP_PATH = 'data/archive/.last-ship'
 
@@ -30,7 +63,7 @@ export const SHIP_STAMP_PATH = 'data/archive/.last-ship'
  * a second archive on the same host - never writes into the real brain.
  */
 function heartbeatPath(): string {
-  return process.env.TGU_HEARTBEAT_PATH
+  return process.env.TG_HEARTBEAT_PATH
     ?? join(homedir(), '.gbrain', 'integrations', '@qwadratic/tg', 'heartbeat.jsonl')
 }
 
@@ -51,7 +84,7 @@ export class ShipError extends OperatorError {
 }
 
 /**
- * Parse `TGU_BRAIN_MAP` - `"7=personal,12=proximata"`.
+ * Parse `TG_BRAIN_MAP` - `"7=personal,12=proximata"`.
  *
  * `ponytail:` deploy config in one env var rather than a new persisted file.
  * Ceiling: unreadable past ~10 folders, and it cannot be edited by the CLI.
@@ -65,7 +98,7 @@ export function parseBrainMap(raw: string | undefined): Map<number, string> {
     const [rawId, source] = trimmed.split('=')
     const id = Number(rawId)
     if (!Number.isInteger(id) || !source) {
-      throw new ShipError(`TGU_BRAIN_MAP entry is not <folderId>=<source>: "${trimmed}"`)
+      throw new ShipError(`TG_BRAIN_MAP entry is not <folderId>=<source>: "${trimmed}"`)
     }
     map.set(id, source.trim())
   }
@@ -123,7 +156,7 @@ export function planShip(options: {
     const sources = folderIds.map((id) => {
       const source = options.brainMap.get(id)
       if (!source) {
-        throw new ShipError(`${file}: folder ${id} is not in TGU_BRAIN_MAP - refusing to guess a brain`)
+        throw new ShipError(`${file}: folder ${id} is not in TG_BRAIN_MAP - refusing to guess a brain`)
       }
       return source
     })
@@ -135,7 +168,7 @@ function capture(gbrainBin: string, file: string, slug: string, source: string):
   const result = spawnSync(
     gbrainBin,
     ['capture', '--stdin', '--slug', slug, '--source', source, '--quiet'],
-    { input: readFileSync(file), stdio: ['pipe', 'pipe', 'inherit'] }
+    { input: readFileSync(file), stdio: ['pipe', 'pipe', 'inherit'], env: childEnv() }
   )
   if (result.error) throw new ShipError(`${gbrainBin} could not be run: ${result.error.message}`)
   if (result.status !== 0) {
@@ -177,7 +210,7 @@ export function ship(options: {
   const archiveDir = options.archiveDir ?? join('data', 'archive')
   const stamp = join(archiveDir, '.last-ship')
   const since = options.all || !existsSync(stamp) ? 0 : statSync(stamp).mtimeMs
-  const brainMap = options.brainMap ?? parseBrainMap(process.env.TGU_BRAIN_MAP)
+  const brainMap = options.brainMap ?? parseBrainMap(process.env.TG_BRAIN_MAP)
   const gbrainBin = options.gbrainBin ?? process.env.GBRAIN_BIN ?? 'gbrain'
 
   const startedAt = Date.now()

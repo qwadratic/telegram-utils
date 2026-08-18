@@ -5,6 +5,7 @@ import { buildFrontmatter, updateFrontmatter, type FolderRef } from '../messages
 import { sortMessagesChronological } from '../messages/sort.js'
 import { getArchivePath } from '../utils/archive-path.js'
 import { writeFileAtomic } from '../utils/atomic.js'
+import { ARCHIVE_FILE_MODE } from '../utils/archive-path.js'
 
 /**
  * Result of appending messages to a monthly file.
@@ -101,7 +102,7 @@ export function appendToChatFile(
     for (const msg of orderedMessages) {
       content += formatMessage(msg)
     }
-    writeFileAtomic(filePath, content)
+    writeFileAtomic(filePath, content, ARCHIVE_FILE_MODE)
 
     return { messagesAppended: orderedMessages.length, fileCreated: true }
   }
@@ -134,7 +135,7 @@ export function appendToChatFile(
   )
 
   // Write updated content
-  writeFileAtomic(filePath, updatedContent)
+  writeFileAtomic(filePath, updatedContent, ARCHIVE_FILE_MODE)
 
   return { messagesAppended: messages.length, fileCreated: false }
 }

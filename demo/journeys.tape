@@ -55,7 +55,7 @@ Enter
 Sleep 500ms
 
 # --- Journey 4: unattended run with no session refuses, and says what to do ---
-Type "TGU_NON_INTERACTIVE=1 tg export chats"
+Type "TG_NON_INTERACTIVE=1 tg export chats"
 Sleep 500ms
 Enter
 Sleep 3s

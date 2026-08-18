@@ -10,8 +10,8 @@ WorkingDirectory=/srv/tg
 # All four data paths are cwd-relative by design (data/session.db,
 # data/session.lock, data/config.json, data/archive/), so WorkingDirectory
 # is the whole configuration. /srv/tg is 0700 tg:tg.
-Environment=TGU_NON_INTERACTIVE=1
-# folderId=gbrainSource, e.g. TGU_BRAIN_MAP=7=personal,12=proximata
+Environment=TG_NON_INTERACTIVE=1
+# folderId=gbrainSource, e.g. TG_BRAIN_MAP=7=personal,12=proximata
 # A file whose folder is not in this map fails the run rather than guessing.
 EnvironmentFile=-/etc/tg.env
 
