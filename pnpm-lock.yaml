@@ -14,9 +14,6 @@ importers:
       '@mtcute/core':
         specifier: ^0.27.8
         version: 0.27.8
-      '@mtcute/markdown-parser':
-        specifier: ^0.27.8
-        version: 0.27.8
       '@mtcute/node':
         specifier: ^0.27.8
         version: 0.27.8
@@ -33,9 +30,6 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
     devDependencies:
-      '@types/better-sqlite3':
-        specifier: ^7.6.13
-        version: 7.6.13
       '@types/node':
         specifier: ^25.2.0
         version: 25.2.0
@@ -250,12 +244,10 @@ packages:
 
   '@mtcute/tl@221.0.0':
     resolution: {integrity: sha512-Wp01L9nznTMLl2s9rbKnzQ8pij72eF4HK2XIziOQoJXiObPKZxQdxvMj+C6l0ArxMFmpT0H0/3EL5RB7O6VPwg==}
+    deprecated: this package was merged into core
 
   '@mtcute/wasm@0.27.8':
     resolution: {integrity: sha512-3z1v1WtkAAW95l5t8LB3Ul+Y8dQNMez5YF16cHE3mAHX5RRrfgE+rgVk+wRQJHa24CugfuEEBSi6QpdZuTRBIw==}
-
-  '@types/better-sqlite3@7.6.13':
-    resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
   '@types/events@3.0.0':
     resolution: {integrity: sha512-EaObqwIvayI5a8dCzhFrjKzVwKLxjoG9T6Ppd5CEo07LRKfQ8Yokw54r5+Wq7FaBQ+yXRvQAYPrHwya1/UFt9g==}
@@ -401,6 +393,7 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   pump@3.0.3:
@@ -631,10 +624,6 @@ snapshots:
       long: 5.2.3
 
   '@mtcute/wasm@0.27.8': {}
-
-  '@types/better-sqlite3@7.6.13':
-    dependencies:
-      '@types/node': 25.2.0
 
   '@types/events@3.0.0': {}
 
