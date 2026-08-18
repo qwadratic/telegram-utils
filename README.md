@@ -10,6 +10,32 @@ a message when you mean to.
 name on screen is invented and no Telegram account is contacted, so the
 recording is safe to publish. Rebuild it with `demo/record.sh`.*
 
+## If you are an AI agent, read this first
+
+`skill/SKILL.md` in this repo is written for you. It covers the setup workflow,
+the user stories this tool supports, and the rules that are **enforced rather
+than advisory** — the exit-code contract, why a refused send must not be routed
+around with `--yes`, and why only a human can create a session.
+
+```sh
+# installed globally
+cat "$(npm root -g)/@qwadratic/tg/skill/SKILL.md"
+
+# from a checkout
+cat skill/SKILL.md
+```
+
+Install it as a Claude Code skill so it loads automatically:
+
+```sh
+mkdir -p ~/.claude/skills/tg
+cp "$(npm root -g)/@qwadratic/tg/skill/SKILL.md" ~/.claude/skills/tg/
+```
+
+The short version: run `tg doctor --json` before anything else, set
+`TG_NON_INTERACTIVE=1`, and act on the exit code rather than parsing prose.
+`AGENTS.md` carries the full contract and also ships in the package.
+
 ## Install
 
 ```sh
@@ -347,11 +373,7 @@ this tool does.
 
 ### The agent skill
 
-`skill/SKILL.md` ships in the package. It tells a coding agent that `tg` exists,
-how to set it up, which user stories it covers, and which rules are enforced
-rather than advisory. Install it for Claude Code with:
-
-```sh
-mkdir -p ~/.claude/skills/tg
-cp "$(npm root -g)/@qwadratic/tg/skill/SKILL.md" ~/.claude/skills/tg/
-```
+`skill/SKILL.md` is the source of truth for agents and ships in the package. See
+[If you are an AI agent, read this first](#if-you-are-an-ai-agent-read-this-first)
+at the top. Keep it in step with `AGENTS.md`: the skill is the orientation, and
+AGENTS.md is the contract.

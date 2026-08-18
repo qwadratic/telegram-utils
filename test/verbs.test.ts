@@ -1,6 +1,6 @@
 import assert from 'node:assert'
 import test from 'node:test'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Message, TelegramClient } from '@mtcute/node'
@@ -8,6 +8,7 @@ import { dumpThread, messageRefs, renderDump } from '../src/dump/index.js'
 import { foldAccents, listPeers, matchPeers, renderPeers } from '../src/peers/index.js'
 import { mediaMatches, pullMedia, renderPulled } from '../src/media/index.js'
 import { parsePeerRef } from '../src/peers/ref.js'
+import { EXIT } from '../src/exit-codes.js'
 import { assertGolden, withTempDir } from './helpers.js'
 
 /**
@@ -319,4 +320,65 @@ test('eval-64 malformed and unusable references are refused offline', () => {
 
   // 1e999 parses as Infinity, which is not a safe integer.
   assert.throws(() => parsePeerRef('1e999'), /Cannot use/)
+})
+
+test('eval-96 the shipped agent skill stays in step with the CLI', () => {
+  // skill/SKILL.md is the orientation an agent reads before it touches this
+  // tool. A skill citing a command the binary does not have is worse than no
+  // skill at all: it sends the agent confidently in the wrong direction, and
+  // nothing else in this repo would notice the drift.
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const skill = readFileSync(join(root, 'skill', 'SKILL.md'), 'utf-8')
+
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')) as {
+    files: string[]
+    name: string
+  }
+  assert.ok(pkg.files.includes('skill'), 'skill/ must be in the published files')
+  assert.ok(skill.includes(pkg.name), 'the skill must name the package it documents')
+
+  // The real command tree, read from the files that build it. Top-level verbs
+  // are the ones hung off `program`; the export subcommands take a parameter
+  // named `exportCommand`, which is what keeps them out of this set.
+  const sources = [
+    readFileSync(join(root, 'src', 'index.ts'), 'utf-8'),
+    ...readdirSync(join(root, 'src', 'cli', 'commands'))
+      .filter((f) => f.endsWith('.ts'))
+      .map((f) => readFileSync(join(root, 'src', 'cli', 'commands', f), 'utf-8'))
+  ]
+  const names = (re: RegExp, text: string) => [...text.matchAll(re)].map((m) => m[1])
+  const topLevel = new Set(sources.flatMap((s) => names(/program\s*\.command\('([^' ]+)/g, s)))
+  const every = new Set(sources.flatMap((s) => names(/\.command\('([^' ]+)/g, s)))
+
+  // Both halves of this eval are greps. If either finds nothing it passes for
+  // the wrong reason, so assert the extraction itself worked.
+  assert.ok(topLevel.size >= 10, `only found ${topLevel.size} top-level commands`)
+
+  // Every `tg ...` inside a code span - fenced or inline - is a command the
+  // skill is telling an agent to run. Prose is excluded: "tg is a CLI" is not
+  // a citation of a command named `is`.
+  const code = [
+    ...[...skill.matchAll(/```[a-z]*\n([\s\S]*?)```/g)].map((m) => m[1]),
+    ...[...skill.matchAll(/`([^`\n]+)`/g)].map((m) => m[1])
+  ].join('\n')
+  const cited = [...code.matchAll(/(?:^|\s)tg ([a-z][a-z-]*)(?: ([a-z][a-z-]*))?/gm)]
+  assert.ok(cited.length >= 10, `only found ${cited.length} cited commands`)
+
+  for (const [, verb, sub] of cited) {
+    assert.ok(topLevel.has(verb), `the skill runs "tg ${verb}", which no .command() registers`)
+    if (sub) {
+      assert.ok(every.has(sub), `the skill runs "tg ${verb} ${sub}", and ${sub} is not a subcommand`)
+    }
+  }
+
+  // Every exit code it publishes must be one this CLI can actually return.
+  const codes = [...skill.matchAll(/^\| (\d) \|/gm)]
+  assert.ok(codes.length >= 5, `only found ${codes.length} documented exit codes`)
+  for (const m of codes) {
+    const code = Number(m[1])
+    assert.ok(
+      (Object.values(EXIT) as number[]).includes(code),
+      `the skill documents exit code ${code}, which is not in the taxonomy`
+    )
+  }
 })
