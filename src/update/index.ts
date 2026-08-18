@@ -1,5 +1,14 @@
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync
+} from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,6 +50,77 @@ export function stateDir(): string {
 
 export function stateFile(): string {
   return join(stateDir(), 'update-check.json')
+}
+
+/** Guards against two processes installing over each other. */
+export function installLockPath(): string {
+  return join(stateDir(), 'install.lock')
+}
+
+/**
+ * Take the install lock, or return null if another process holds it.
+ *
+ * WHY this is not optional: two `npm install -g` runs against the SAME prefix
+ * corrupt it. npm removes the existing tree before writing the new one, so the
+ * loser of the race deletes what the winner just installed. Observed exactly
+ * that - an isolated install was destroyed outright, leaving no package.json and
+ * a dangling bin symlink, because `tg update` ran an install in the foreground
+ * while the startup check spawned a second one in the background.
+ *
+ * `openSync(path, 'wx')` is an atomic create-if-absent at the syscall level, so
+ * two processes racing here cannot both win. A lock from a crashed install is
+ * reclaimed once its pid is gone, the same rule the session lock uses.
+ */
+export function acquireInstallLock(path = installLockPath()): (() => void) | null {
+  mkdirSync(dirname(path), { recursive: true })
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = openSync(path, 'wx')
+      writeSync(fd, `${process.pid}\n`)
+      closeSync(fd)
+
+      let released = false
+      return () => {
+        if (released) return
+        released = true
+        try {
+          unlinkSync(path)
+        } catch {
+          // Already gone.
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') return null
+
+      let pid = 0
+      try {
+        pid = Number(readFileSync(path, 'utf-8').trim())
+      } catch {
+        // Unreadable: treat as stale below.
+      }
+
+      // A LIVE owner means refuse, including ourselves: if something in this
+      // process already holds the lock, a second install is exactly the race
+      // being prevented. Only a dead or unreadable owner is reclaimable.
+      if (pid) {
+        try {
+          process.kill(pid, 0)
+          return null
+        } catch (probe) {
+          // EPERM means the process exists but belongs to another user.
+          if ((probe as NodeJS.ErrnoException).code === 'EPERM') return null
+        }
+      }
+
+      try {
+        unlinkSync(path)
+      } catch {
+        // Someone else cleaned it up; the retry settles it.
+      }
+    }
+  }
+  return null
 }
 
 export interface UpdateState {
@@ -284,6 +364,11 @@ export function installLatest(
   const prefix = installPrefix(moduleUrl)
   const args = installArgs(packageName, prefix)
 
+  // Refuse rather than race: a concurrent install into the same prefix destroys
+  // it. Returning false records an attempt, and the next run retries.
+  const release = acquireInstallLock()
+  if (!release) return Promise.resolve(false)
+
   const before = prefix ? installedVersion(prefix, packageName) : null
 
   return new Promise((resolve) => {
@@ -293,8 +378,12 @@ export function installLatest(
       // otherwise leave a half-written global package.
       detached: true
     })
-    child.on('error', () => resolve(false))
+    child.on('error', () => {
+      release()
+      resolve(false)
+    })
     child.on('close', (code) => {
+      release()
       if (code !== 0) return resolve(false)
       if (!prefix) return resolve(true)
 
@@ -364,6 +453,10 @@ export function scheduleUpdateCheck(currentVersion: string, argv: string[] = pro
   if (updateSkipReason()) return
   // Never recurse: the background worker runs this same binary.
   if (argv.includes('--background-update-check')) return
+  // `tg update` does the work in the foreground. Spawning the background worker
+  // too would put two npm installs on the same prefix at once, which corrupts
+  // it - the loser deletes what the winner wrote.
+  if (argv.includes('update')) return
 
   const state = readState()
   const plan = planUpdate(state, currentVersion)

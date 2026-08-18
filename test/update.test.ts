@@ -331,3 +331,57 @@ test('eval-80 the install re-resolves latest instead of trusting a cached packum
   // is what wrote 0.3.3 into the wrong tree in the first place.
   assert.ok(!installArgs(PACKAGE_NAME, null).includes('--prefix'))
 })
+
+test('eval-81 two processes never install into the same prefix at once', async () => {
+  const { acquireInstallLock } = await import('../src/update/index.js')
+
+  await withTempDir(async (dir) => {
+    const lock = join(dir, 'install.lock')
+
+    // WHY this lock exists: npm removes the existing tree before writing the
+    // new one, so a second concurrent install deletes what the first just
+    // wrote. Observed an isolated install destroyed outright - no package.json,
+    // dangling bin symlink - because `tg update` installed in the foreground
+    // while the startup check spawned a second install in the background.
+    const first = acquireInstallLock(lock)
+    assert.ok(first, 'the first caller takes the lock')
+
+    const second = acquireInstallLock(lock)
+    assert.equal(second, null, 'the second caller is refused, not queued')
+
+    first!()
+    const third = acquireInstallLock(lock)
+    assert.ok(third, 'the lock is reusable once released')
+    third!()
+
+    // A lock left by a crashed install must not block updates forever. Pid 1 is
+    // alive, so use a pid that cannot be.
+    const { writeFileSync } = await import('node:fs')
+    writeFileSync(lock, '999999999\n')
+    const afterCrash = acquireInstallLock(lock)
+    assert.ok(afterCrash, 'a lock owned by a dead pid is reclaimed')
+    afterCrash!()
+
+    // Garbage is reclaimed too, rather than wedging the updater.
+    writeFileSync(lock, 'not-a-pid\n')
+    const afterGarbage = acquireInstallLock(lock)
+    assert.ok(afterGarbage, 'an unparseable lock is reclaimed')
+    afterGarbage!()
+  })
+})
+
+test('eval-82 the update command does not also spawn a background installer', async () => {
+  // The two would race on the same prefix. This is a static check because the
+  // alternative is spawning real processes in a test.
+  const source = readFileSync(join(ROOT, 'src', 'update', 'index.ts'), 'utf-8')
+  const schedule = source.slice(source.indexOf('export function scheduleUpdateCheck'))
+
+  assert.ok(
+    /argv\.includes\('update'\)/.test(schedule),
+    'scheduleUpdateCheck must bail out for the update command itself'
+  )
+  assert.ok(
+    /argv\.includes\('--background-update-check'\)/.test(schedule),
+    'and it must never recurse into the background worker'
+  )
+})
