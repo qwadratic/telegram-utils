@@ -4,7 +4,11 @@ A command-line tool for reading your own Telegram from a terminal or an agent:
 find a chat, dump a thread, pull media, archive folders into Markdown, and send
 a message when you mean to.
 
-![Export journeys](https://raw.githubusercontent.com/qwadratic/telegram-utils/master/demo/out/telegram-utils-export-journeys.gif)
+![tg tour](https://raw.githubusercontent.com/qwadratic/tg/master/demo/out/tg-tour.gif)
+
+*Recorded against `demo/workspace`, a synthetic archive. Every folder and chat
+name on screen is invented and no Telegram account is contacted, so the
+recording is safe to publish. Rebuild it with `demo/record.sh`.*
 
 ## Install
 
@@ -331,6 +335,23 @@ Work is tracked in `backlog/` (`backlog task list --plain`); the reasoning behin
 the build is in `backlog/decisions/`. `AGENTS.md` is the contract for anything
 automated working in this repo.
 
-`demo/render.sh` rebuilds the recording above. It drives the real CLI against
-`demo/workspace`, a synthetic archive built by `demo/make-fixture.mjs`, so every
-folder and chat name on screen is invented and nothing publishable can leak.
+### The demo
+
+`demo/record.sh` rebuilds the recording at the top: it drives the real binary
+against `demo/workspace`, a synthetic archive built by `demo/make-fixture.mjs`.
+asciinema records the cast, `agg` renders the GIF. The tour deliberately shows
+the guardrails refusing bad input, because refusing correctly is most of what
+this tool does.
+
+`demo/render.sh` still renders the older VHS export-journeys clip.
+
+### The agent skill
+
+`skill/SKILL.md` ships in the package. It tells a coding agent that `tg` exists,
+how to set it up, which user stories it covers, and which rules are enforced
+rather than advisory. Install it for Claude Code with:
+
+```sh
+mkdir -p ~/.claude/skills/tg
+cp "$(npm root -g)/@qwadratic/tg/skill/SKILL.md" ~/.claude/skills/tg/
+```

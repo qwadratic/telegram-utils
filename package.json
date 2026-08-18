@@ -1,6 +1,6 @@
 {
   "name": "@qwadratic/tg",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "description": "Read, archive and send your own Telegram from the command line or an agent",
   "keywords": [
     "telegram",
@@ -12,13 +12,13 @@
     "archive",
     "agent"
   ],
-  "homepage": "https://github.com/qwadratic/telegram-utils#readme",
+  "homepage": "https://github.com/qwadratic/tg#readme",
   "bugs": {
-    "url": "https://github.com/qwadratic/telegram-utils/issues"
+    "url": "https://github.com/qwadratic/tg/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/qwadratic/telegram-utils.git"
+    "url": "git+https://github.com/qwadratic/tg.git"
   },
   "license": "ISC",
   "packageManager": "pnpm@11.9.0",
@@ -32,7 +32,8 @@
     "dist",
     "bin",
     "README.md",
-    "AGENTS.md"
+    "AGENTS.md",
+    "skill"
   ],
   "publishConfig": {
     "access": "public"

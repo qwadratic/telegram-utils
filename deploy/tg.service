@@ -1,6 +1,6 @@
 [Unit]
 Description=tg: export tracked Telegram folders, then ship them into gbrain
-Documentation=https://github.com/qwadratic/telegram-utils
+Documentation=https://github.com/qwadratic/tg
 
 [Service]
 Type=oneshot

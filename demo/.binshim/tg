@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Always the repo's own build, never whatever happens to be installed globally.
+# A demo that records a different binary than the repo is a demo of nothing.
+exec node "$(cd "$(dirname "$0")/../.." && pwd)/bin/tg.mjs" "$@"

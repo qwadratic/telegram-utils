@@ -21,7 +21,13 @@ import { dirname, join } from 'node:path'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const compiled = join(root, 'dist', 'index.js')
 
-if (existsSync(compiled)) {
+// A published package ships `dist` and NOT `src` (see the files field), so the
+// presence of `src` means this is a git checkout. In a checkout the source is
+// the truth and a stale `dist` is a trap: it silently runs whatever was last
+// built, which was 0.3.0 against 0.3.10 source the first time this bit.
+const isCheckout = existsSync(join(root, 'src', 'index.ts'))
+
+if (existsSync(compiled) && !isCheckout) {
   await import(compiled)
 } else {
   const tsx = join(root, 'node_modules', '.bin', 'tsx')
