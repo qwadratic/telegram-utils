@@ -21,7 +21,7 @@ Exit codes are the contract. Act on them, do not parse prose:
 | 0 | ok | proceed |
 | 1 | a bug in this tool | report it, with the stack |
 | 2 | usage error | fix the command |
-| 3 | `needs_human_login` | STOP. Ask the operator to run `tg session login`. Retrying is pointless |
+| 3 | needs a human | STOP. Either the workspace needs `tg session login`, or an unattended send was refused. Ask the operator; retrying is pointless and `--yes` is theirs to give, not yours to add |
 | 4 | `not_configured` | the report's `hint` is the fix; it usually needs no human |
 | 5 | busy | another run holds the lock. Wait and retry |
 | 6 | upstream | Telegram, gbrain or the network failed. Not your fault; retry with backoff |

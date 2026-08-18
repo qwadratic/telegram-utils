@@ -44,7 +44,7 @@ Act on the exit code. Do not parse prose.
 | --- | --- | --- |
 | 0 | ready | proceed |
 | 2 | usage | you passed something wrong; fix the command |
-| 3 | `needs_human_login` | **STOP.** Only a human can fix this. Ask the operator to run `tg session login` at a terminal. Retrying is pointless |
+| 3 | needs a human | **STOP.** Only a human can resolve this, and retrying cannot. Either the workspace needs `tg session login` at a terminal (`status: needs_human_login`), or you tried to send unattended and no one authorised it. Ask the operator; do not add `--yes` yourself |
 | 4 | `not_configured` | the report's `hint` is the fix; usually no human needed |
 | 5 | busy | another run holds the workspace lock. Wait, retry |
 | 6 | upstream | Telegram, gbrain or the network failed. Retry with backoff |
