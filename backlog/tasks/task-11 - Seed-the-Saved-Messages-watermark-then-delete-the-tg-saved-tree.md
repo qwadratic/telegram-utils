@@ -4,11 +4,12 @@ title: 'Seed the Saved Messages watermark, then delete the tg-saved tree'
 status: To Do
 assignee: []
 created_date: '2026-08-05 00:36'
+updated_date: '2026-08-18 06:44'
 labels:
   - cleanup
 dependencies:
-  - TASK-7
   - TASK-10
+  - TASK-7
 priority: medium
 ordinal: 11000
 ---

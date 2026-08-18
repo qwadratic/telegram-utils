@@ -4,10 +4,12 @@ title: Replace ship's mtime watermark with a per-file ledger
 status: To Do
 assignee: []
 created_date: '2026-08-18 03:58'
+updated_date: '2026-08-18 06:43'
 labels:
   - gbrain
   - sync
-dependencies: []
+dependencies:
+  - TASK-29
 priority: medium
 ordinal: 28000
 ---

@@ -12,9 +12,7 @@ labels:
   - rename
   - security
   - blocked-on-login
-dependencies:
-  - TASK-4
-  - TASK-17
+dependencies: []
 priority: low
 ordinal: 19000
 ---

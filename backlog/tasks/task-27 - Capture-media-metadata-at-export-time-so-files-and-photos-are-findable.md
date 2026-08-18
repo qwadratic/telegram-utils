@@ -4,10 +4,12 @@ title: Capture media metadata at export time so files and photos are findable
 status: To Do
 assignee: []
 created_date: '2026-08-18 03:58'
+updated_date: '2026-08-18 06:43'
 labels:
   - export
   - search
-dependencies: []
+dependencies:
+  - TASK-26
 priority: high
 ordinal: 27000
 ---
