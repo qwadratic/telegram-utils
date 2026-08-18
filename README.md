@@ -265,6 +265,14 @@ export TGU_NO_UPDATE=1                 # never check, never install
 export TGU_UPDATE_INTERVAL_HOURS=168   # or just check less often
 ```
 
+If an update is interrupted part way through - the machine sleeps, the terminal
+is closed, the process is killed - npm can leave the install incomplete, exactly
+as an interrupted `npm install -g` would. One command repairs it:
+
+```sh
+npm install -g @qwadratic/tg@latest
+```
+
 Auto-update is skipped automatically when `CI` is set, so a build agent never
 swaps versions mid-pipeline, and when `tg` is running from a git checkout, so
 `npm install -g` can never overwrite a working copy. If an install fails twice
