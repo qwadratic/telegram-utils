@@ -339,3 +339,77 @@ test('eval-39 the send module is registered from exactly one entry point', () =>
     'send should be defined in one file and registered in one file'
   )
 })
+
+test('eval-97 the send gate is cheap, and refuses before a session is opened', () => {
+  // The --yes gate is knowable from argv alone. Running it after the client
+  // opens means an unattended send that was always going to be refused still
+  // takes the workspace lock and touches the network, and - worse - reports
+  // "no usable session" when the real blocker is policy. An agent reading that
+  // goes off to fix the session instead of stopping to ask a human.
+  const source = readFileSync(
+    fileURLToPath(new URL('../src/cli/commands/send.ts', import.meta.url)),
+    'utf-8'
+  )
+
+  const actions = [...source.matchAll(/\.action\(async \([^)]*\) => \{([\s\S]*?)\n {6}\}\)/g)]
+    .map((m) => m[1])
+    .filter((body) => body.includes('withAuthenticatedClient'))
+
+  assert.ok(actions.length >= 3, `expected the write actions, found ${actions.length}`)
+
+  for (const body of actions) {
+    const gate = body.indexOf('assertConfirmed')
+    const client = body.indexOf('withAuthenticatedClient')
+    assert.ok(gate !== -1, 'a write action reaches a client without the --yes gate')
+    assert.ok(gate < client, 'the --yes gate must run before the session is opened')
+  }
+})
+
+test('eval-98 refusing an unattended send is exit 3, never exit 4', () => {
+  // 4 tells an agent "the hint is the fix; usually no human needed", which is
+  // an invitation to retry with --yes bolted on - the one workaround this gate
+  // exists to prevent. 3 means stop and ask the operator.
+  const source = readFileSync(
+    fileURLToPath(new URL('../src/send/gate.ts', import.meta.url)),
+    'utf-8'
+  )
+  const refusal = source.slice(source.indexOf('export function assertConfirmed'))
+  const body = refusal.slice(0, refusal.indexOf('\n}'))
+
+  assert.match(body, /EXIT\.needsHuman/, 'the refusal must carry EXIT.needsHuman')
+  assert.doesNotMatch(body, /EXIT\.notConfigured/, 'a refusal is not a misconfiguration')
+})
+
+test('eval-99 commander usage failures exit 2, not 1', () => {
+  // 1 is reserved for "a bug in tg, report it with the stack". Commander exits
+  // 1 for unknown options and missing arguments, so without this mapping every
+  // agent typo is reported to us as a crash. exitOverride binds to a single
+  // command and is not inherited, so it has to be applied down the tree.
+  const source = readFileSync(fileURLToPath(new URL('../src/index.ts', import.meta.url)), 'utf-8')
+
+  assert.match(source, /exitOverride/, 'commander exit codes must be mapped')
+  assert.match(source, /EXIT\.usage/, 'usage failures must map to the usage code')
+  assert.match(
+    source,
+    /for \(const child of command\.commands\) mapUsageExits\(child\)/,
+    'the mapping must recurse, or only the root command is covered'
+  )
+  assert.match(source, /mapUsageExits\(program\)/, 'the mapping must actually be applied')
+})
+
+test('eval-100 every write verb accepts --json', () => {
+  // The skill tells an agent to pass --json and read the envelope. When the
+  // write verbs did not declare it, commander rejected the flag outright, so
+  // the refusal an agent most needs to parse was the one it could not.
+  const source = readFileSync(
+    fileURLToPath(new URL('../src/cli/commands/send.ts', import.meta.url)),
+    'utf-8'
+  )
+
+  const verbs = [...source.matchAll(/\.command\('((?:text|media|note)[^']*)'\)([\s\S]*?)\.action\(/g)]
+  assert.equal(verbs.length, 3, `expected 3 write verbs, found ${verbs.length}`)
+
+  for (const [, name, options] of verbs) {
+    assert.match(options, /option\('--json'/, `tg send ${name} does not accept --json`)
+  }
+})

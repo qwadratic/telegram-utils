@@ -4,6 +4,7 @@ import type { Command } from 'commander'
 import type { TelegramClient } from '@mtcute/node'
 import { sendMedia, sendNote, sendText, type SentRecord } from '../../send/index.js'
 import {
+  assertConfirmed,
   MAX_SENDS_PER_DAY,
   MAX_SENDS_PER_RUN,
   readSendLog,
@@ -75,9 +76,11 @@ export function registerSendCommand(program: Command): void {
     .command('text <peer> <text>')
     .description('Send a text message (id, @username or t.me link)')
     .option('--yes', 'Skip the recipient confirmation; required for unattended runs')
+    .option('--json', 'Machine-readable output')
     .action(async (peer: string, text: string, options) => {
       await runCommand(async () => {
         parsePeerRef(peer)
+        assertConfirmed(options)
         await withAuthenticatedClient(async (tg) => {
           const target = await resolvePeerRef(tg, peer)
           if (!(await confirmRecipient(target, 'a text message', Boolean(options.yes)))) return
@@ -92,9 +95,11 @@ export function registerSendCommand(program: Command): void {
     .option('--caption <text>', 'Caption for the file')
     .option('--mime <type>', 'Override the detected mime type')
     .option('--yes', 'Skip the recipient confirmation; required for unattended runs')
+    .option('--json', 'Machine-readable output')
     .action(async (peer: string, file: string, options) => {
       await runCommand(async () => {
         parsePeerRef(peer)
+        assertConfirmed(options)
         await withAuthenticatedClient(async (tg) => {
           const target = await resolvePeerRef(tg, peer)
           if (!(await confirmRecipient(target, `the file ${file}`, Boolean(options.yes)))) return
@@ -148,9 +153,11 @@ export function registerSendCommand(program: Command): void {
     .command('note <text>')
     .description('Send a note to your own Saved Messages')
     .option('--yes', 'Required for unattended runs')
+    .option('--json', 'Machine-readable output')
     .action(async (text: string, options) => {
       await runCommand(async () => {
         if (!text.trim()) throw new OperatorError('Give some text to save.')
+        assertConfirmed(options)
         await withAuthenticatedClient(async (tg) => {
           // No recipient confirmation: the only possible target is yourself.
           report(await sendNote(tg, text, { yes: options.yes }))

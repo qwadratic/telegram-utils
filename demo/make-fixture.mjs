@@ -5,13 +5,19 @@
 // chat names here are invented, so nothing recordable can leak. Timestamps are
 // generated relative to now so the "last updated" column shows a realistic
 // spread every time the demo is re-rendered.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const workspace = process.argv[2] ?? join(process.cwd(), 'demo', 'workspace')
+const workspace = process.argv[2] ?? '/tmp/tg-demo'
 
 rmSync(workspace, { recursive: true, force: true })
 mkdirSync(join(workspace, 'data', 'archive'), { recursive: true })
+
+// Match what `tg init` does. Without this the fixture is 0755 and the demo
+// records two permission warnings that a real workspace never shows - a demo
+// of the fixture's shortcuts rather than of the tool.
+chmodSync(join(workspace, 'data'), 0o700)
+chmodSync(join(workspace, 'data', 'archive'), 0o700)
 
 const now = Date.now()
 const agoISO = (minutes) => new Date(now - minutes * 60_000).toISOString()

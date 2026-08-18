@@ -6,7 +6,8 @@ a message when you mean to.
 
 ![tg tour](https://raw.githubusercontent.com/qwadratic/tg/master/demo/out/tg-tour.gif)
 
-*Recorded against `demo/workspace`, a synthetic archive. Every folder and chat
+*One binary, two audiences: the first half is what a person sees, the second is
+what a coding agent parses. Recorded against a synthetic archive. Every folder and chat
 name on screen is invented and no Telegram account is contacted, so the
 recording is safe to publish. Rebuild it with `demo/record.sh`.*
 
@@ -363,13 +364,26 @@ automated working in this repo.
 
 ### The demo
 
-`demo/record.sh` rebuilds the recording at the top: it drives the real binary
-against `demo/workspace`, a synthetic archive built by `demo/make-fixture.mjs`.
-asciinema records the cast, `agg` renders the GIF. The tour deliberately shows
+`demo/record.sh` rebuilds the recording at the top. It drives the real binary
+against a throwaway workspace that `demo/make-fixture.mjs` builds under `/tmp`,
+records the cast with asciinema and renders the GIF with `agg`.
+
+Two things run on every recording, because both have already been wrong once:
+
+- **A leak scan.** The cast is published, and `tg doctor` prints an absolute
+  data directory, so the first cut had the author's home directory in its very
+  first command. The recorder now fails if the cast contains your home path,
+  username, or checkout path. `/tmp` is used rather than `TMPDIR`, which on
+  macOS is a per-user path containing a machine-identifying hash.
+- **A duration check.** A v3 cast stores the gap *since the previous event*, not
+  an absolute offset, so reading the last line makes a 50s recording look like
+  3.6s. That misreading is how a `--speed 0.14` correction shipped and turned
+  the tour into a 5m39s GIF. Playback is now real time, and the recorder prints
+  the duration and warns past 2m30s.
+
+The tour deliberately shows
 the guardrails refusing bad input, because refusing correctly is most of what
 this tool does.
-
-`demo/render.sh` still renders the older VHS export-journeys clip.
 
 ### The agent skill
 

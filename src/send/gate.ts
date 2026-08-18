@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { OperatorError } from '../errors.js'
+import { EXIT } from '../exit-codes.js'
 import { SEND_LOG_PATH } from '../paths.js'
 import { canPrompt } from '../session/index.js'
 
@@ -49,10 +50,16 @@ export function assertConfirmed(options: { yes?: boolean }): void {
   if (options.yes) return
   if (canPrompt()) return
 
+  // Exit 3, not the OperatorError default of 4. The contract tells an agent
+  // that 4 means "the hint is the fix; usually no human needed", which invites
+  // exactly the workaround this gate exists to prevent: retrying with --yes
+  // bolted on. 3 means stop and ask the operator, which is the truth here.
   throw new OperatorError(
     'Refusing to send from a non-interactive run without --yes.\n' +
     '  This run cannot ask anyone, and sending is not reversible.\n' +
-    '  Add --yes to state that an unattended send is intended.'
+    '  --yes is the operator stating an unattended send is intended. If you are\n' +
+    '  an agent and no one told you to send, stop here and ask them.',
+    EXIT.needsHuman
   )
 }
 

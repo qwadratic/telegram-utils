@@ -22,6 +22,7 @@ import { registerSendCommand } from './cli/commands/send.js'
 import { registerUpdateCommand } from './cli/commands/update.js'
 import { registerDoctorCommand } from './cli/commands/doctor.js'
 import { scheduleUpdateCheck } from './update/index.js'
+import { EXIT } from './exit-codes.js'
 
 const VERSION = '0.3.11'
 
@@ -65,5 +66,21 @@ registerUpdateCommand(program, VERSION)
 // One synchronous file read, then a detached child if the cache is stale. This
 // deliberately runs before parse() and adds no measurable time to any command.
 scheduleUpdateCheck(VERSION)
+
+// Commander exits 1 for its own usage failures - unknown option, missing
+// argument, bad choice. This CLI reserves 1 for "a bug in tg, report it", so
+// left alone every agent typo is reported as our crash. Map them to 2 (usage)
+// and leave commander's own 0-exits (--help, --version) alone.
+// exitOverride binds to one command and is NOT inherited, so the root alone
+// would leave every subcommand still exiting 1.
+function mapUsageExits(command: Command): void {
+  command.exitOverride((error) => {
+    const usage = /^commander\.(unknown|missing|invalid|excess|conflicting)/.test(error.code)
+    process.exit(usage ? EXIT.usage : error.exitCode)
+  })
+  for (const child of command.commands) mapUsageExits(child)
+}
+
+mapUsageExits(program)
 
 program.parse()
