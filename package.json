@@ -36,7 +36,7 @@
     "AGENTS.md"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "tsx --trace-warnings src/index.ts",

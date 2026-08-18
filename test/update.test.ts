@@ -164,3 +164,23 @@ test('eval-73 the notice never promises a background update that will not happen
     assert.ok(!p.auto || p.spawn, `auto without spawn for ${JSON.stringify(state)}`)
   }
 })
+
+test('eval-74 a skip reason wins even over an explicitly typed update', async () => {
+  // `tgu update` typed by a human must still not install over a git checkout,
+  // ignore TGU_NO_UPDATE, or swap versions inside a CI job - in CI nobody typed
+  // anything, some script did. force only retries a version that automatic
+  // attempts gave up on.
+  const { runUpdateCheck } = await import('../src/update/index.js')
+
+  const original = process.env.CI
+  process.env.CI = 'true'
+  try {
+    const outcome = await runUpdateCheck('0.3.0', { force: true })
+    assert.equal(outcome.skipped, 'ci', 'force must not override the CI guard')
+    assert.equal(outcome.updated, false)
+    assert.equal(outcome.latest, null, 'and it must not even reach the registry')
+  } finally {
+    if (original === undefined) delete process.env.CI
+    else process.env.CI = original
+  }
+})

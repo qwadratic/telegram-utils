@@ -277,16 +277,21 @@ export interface UpdateOutcome {
 /**
  * Background half, and also what `tgu update` runs in the foreground.
  *
- * `force` is the explicit `tgu update`: it ignores the interval and the
- * global-install requirement is still respected, because npm-installing over a
- * checkout is destructive no matter who asked.
+ * A skip reason ALWAYS wins, even for an explicitly typed `tgu update`. Asking
+ * by hand is not a reason to install over a git checkout, to ignore
+ * TGU_NO_UPDATE, or to swap versions inside a CI job - in CI in particular
+ * nobody typed anything, some script did.
+ *
+ * `force` therefore does one thing only: it retries a version that automatic
+ * attempts have given up on, which is exactly what a human running
+ * `tgu update` after fixing their permissions wants.
  */
 export async function runUpdateCheck(
   currentVersion: string,
   options: { force?: boolean; install?: boolean } = {}
 ): Promise<UpdateOutcome> {
   const skipped = updateSkipReason()
-  if (skipped && !(options.force && skipped !== 'not-a-global-install')) {
+  if (skipped) {
     return { current: currentVersion, latest: null, updated: false, skipped }
   }
 

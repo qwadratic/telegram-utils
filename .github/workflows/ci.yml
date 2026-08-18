@@ -21,9 +21,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The floor declared in package.json engines, and current LTS. If the
-        # floor breaks, engines is wrong and someone's install is broken.
-        node: ['20', '22']
+        # The floor declared in package.json engines, and current. If the floor
+        # breaks, engines is wrong and someone's install is broken.
+        #
+        # Node 20 is deliberately absent: pnpm 11 imports node:sqlite and needs
+        # >= 22.13, so a Node 20 job cannot even install dependencies. Claiming
+        # >= 20 in engines while being unable to test it is the kind of unbacked
+        # promise this repo keeps finding in its own docs. Node 20 is EOL anyway.
+        node: ['22', '24']
 
     steps:
       - uses: actions/checkout@v7
@@ -58,3 +63,56 @@ jobs:
       # lines are easy to write a pattern against that silently matches nothing.
       - name: Verify the package contents
         run: node scripts/check-package-contents.mjs
+
+  # The gates above run against the source tree with pnpm. This runs against the
+  # thing people actually get: the packed tarball, installed globally with npm,
+  # driven in an empty directory. It is how the psst-missing and native-binding
+  # problems were found by hand, now automated.
+  smoke:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+      - name: Install the packed tarball globally, like a user would
+        run: |
+          TARBALL="$(npm pack --silent)"
+          npm install -g "./$TARBALL"
+
+      - name: Drive it in an empty directory
+        run: |
+          mkdir -p /tmp/ws && cd /tmp/ws
+
+          test "$(tgu --version)" = "$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
+          echo "version ok"
+
+          # init must work with no vault and no session, and must not connect.
+          tgu init --json > init.json || true
+          cat init.json
+          node -e "
+            const s = require('/tmp/ws/init.json');
+            if (s.gitignored !== true) { console.error('init did not gitignore the data dir'); process.exit(1) }
+            if (s.hasSession !== false) { console.error('a fresh workspace claims a session'); process.exit(1) }
+          "
+          echo "init ok"
+
+          # The offline guards must fire without a session or a network call.
+          tgu dump '@durov' 2>&1 | grep -q 'No usable Telegram session' && echo "session gate ok"
+          tgu dump 'has space' 2>&1 | grep -q 'Cannot use' && echo "reference gate ok"
+          tgu dump '@durоv' 2>&1 | grep -q 'non-ASCII' && echo "homoglyph gate ok"
+
+          # Updates must be inert in CI, or a build agent swaps versions mid-run.
+          tgu update 2>&1 | grep -q 'skipped in CI' && echo "update gate ok"
+        env:
+          TGU_NON_INTERACTIVE: '1'

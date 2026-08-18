@@ -295,8 +295,10 @@ pnpm run typecheck
 pnpm run build
 ```
 
-CI runs the same three gates on Node 20 and 22, plus a check that the published
-tarball contains only runtime code (`scripts/check-package-contents.mjs`).
+CI runs the same gates on Node 22 and 24, checks that the published tarball
+contains only runtime code (`scripts/check-package-contents.mjs`), and then
+installs that tarball globally and drives it in an empty directory, which is how
+the missing-psst and native-binding problems were found in the first place.
 
 ### Releasing
 
