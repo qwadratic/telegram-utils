@@ -13,7 +13,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, 
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parseBrainMap, planShip, readFolderIds, ship, slugForFile, ShipError } from '../src/ship/index.js'
+import { parseBrainMap, planShip, readFolderIds, ship, slugForFile, ShipError, unroutableError } from '../src/ship/index.js'
 import { withTempDir } from './helpers.js'
 
 const SRC = fileURLToPath(new URL('../src/', import.meta.url))
@@ -110,7 +110,7 @@ test('eval-43 routing: one folder one brain, two folders two brains', async () =
     writeFileSync(join('archive', 'b_2.md'), page('[12]'))
     writeFileSync(join('archive', 'c_3.md'), page('[7, 12]'))
 
-    const plan = planShip({
+    const { entries: plan } = planShip({
       archiveDir: 'archive',
       since: 0,
       brainMap: parseBrainMap('7=personal,12=proximata')
@@ -126,17 +126,26 @@ test('eval-43 routing: one folder one brain, two folders two brains', async () =
 test('eval-44 an unroutable file fails loudly instead of defaulting to a brain', async () => {
   await withTempDir(async () => {
     mkdirSync('archive', { recursive: true })
+    // A chat in no tracked folder.
     writeFileSync(join('archive', 'orphan_9.md'), page('[]'))
+    let plan = planShip({ archiveDir: 'archive', since: 0, brainMap: parseBrainMap('7=personal') })
+    assert.deepEqual(plan.entries, [], 'nothing is routed')
+    assert.equal(plan.skipped.length, 1)
+    assert.equal(plan.skipped[0].reason, 'no-folder')
+    // The DEFAULT is still a loud failure: only an explicit flag proceeds.
+    assert.throws(() => { throw unroutableError(plan.skipped) }, /in no tracked folder/)
     assert.throws(
-      () => planShip({ archiveDir: 'archive', since: 0, brainMap: parseBrainMap('7=personal') }),
-      /no folder_ids/
+      () => ship({ archiveDir: 'archive', brainMap: parseBrainMap('7=personal'), dryRun: true }),
+      /cannot be routed/
     )
 
+    // A chat whose folder is not in the map.
     writeFileSync(join('archive', 'orphan_9.md'), page('[99]'))
-    assert.throws(
-      () => planShip({ archiveDir: 'archive', since: 0, brainMap: parseBrainMap('7=personal') }),
-      /not in TG_BRAIN_MAP/
-    )
+    plan = planShip({ archiveDir: 'archive', since: 0, brainMap: parseBrainMap('7=personal') })
+    assert.equal(plan.skipped[0].reason, 'unmapped-folder')
+    assert.throws(() => { throw unroutableError(plan.skipped) }, /TG_BRAIN_MAP/)
+    // The message must name the fix, not just the problem.
+    assert.match(unroutableError(plan.skipped).message, /99=<source>/)
   })
 })
 
@@ -151,19 +160,19 @@ test('eval-45 shipping twice is a no-op: same slug, same stdin, nothing re-sent'
     }
 
     const first = ship(opts)
-    assert.deepEqual(first, { shipped: 1, captures: 1 })
+    assert.deepEqual(first, { shipped: 1, captures: 1, skipped: 0 })
     assert.equal(calls(dir).length, 1)
     assert.deepEqual(calls(dir)[0].argv, [
       'capture', '--stdin', '--slug', 'tg/chat/a_1', '--source', 'personal', '--quiet'
     ])
 
     // Second run: the watermark has moved past the file, so nothing is sent.
-    assert.deepEqual(ship(opts), { shipped: 0, captures: 0 })
+    assert.deepEqual(ship(opts), { shipped: 0, captures: 0, skipped: 0 })
     assert.equal(calls(dir).length, 1)
 
     // --all re-sends it, and byte-for-byte the same payload under the same
     // slug: gbrain's UNIQUE (source_id, slug) turns that into an update.
-    assert.deepEqual(ship({ ...opts, all: true }), { shipped: 1, captures: 1 })
+    assert.deepEqual(ship({ ...opts, all: true }), { shipped: 1, captures: 1, skipped: 0 })
     const [before, after] = calls(dir)
     assert.deepEqual(before, after)
   })
@@ -201,7 +210,7 @@ test('eval-47 --dry-run execs nothing and moves no watermark', async () => {
       brainMap: parseBrainMap('7=personal'),
       gbrainBin: fakeGbrain(dir)
     })
-    assert.deepEqual(result, { shipped: 1, captures: 1 })
+    assert.deepEqual(result, { shipped: 1, captures: 1, skipped: 0 })
     assert.equal(calls(dir).length, 0)
     assert.equal(existsSync(join('archive', '.last-ship')), false)
   })
@@ -329,4 +338,42 @@ test('eval-84 the gbrain child never inherits a Telegram credential', async () =
     assert.ok(!allowlist.includes(secret), `${secret} is on the gbrain env allowlist`)
   }
   assert.ok(!/TG_SESSION|API_HASH|API_ID/.test(allowlist), 'no Telegram credential may be forwarded')
+})
+
+test('eval-92 unroutable files cost one file each, not the whole run', async () => {
+  // On the real archive 38 of 130 chats belong to no tracked folder - exported
+  // directly, or the folder changed later. Failing the run on the first one
+  // meant those 38 blocked the other 92 from ever reaching the brain. Refusing
+  // to GUESS is the invariant; refusing to ship anything is not.
+  await withTempDir(async (dir) => {
+    mkdirSync('archive', { recursive: true })
+    writeFileSync(join('archive', 'good_1.md'), page('[7]'))
+    writeFileSync(join('archive', 'orphan_2.md'), page('[]'))
+    writeFileSync(join('archive', 'elsewhere_3.md'), page('[99]'))
+
+    const brainMap = parseBrainMap('7=personal')
+
+    // Default: nothing ships, and the error names both causes and both fixes.
+    assert.throws(
+      () => ship({ archiveDir: 'archive', brainMap, dryRun: true }),
+      (e: Error) =>
+        /cannot be routed/.test(e.message) &&
+        /no tracked folder/.test(e.message) &&
+        /TG_BRAIN_MAP/.test(e.message)
+    )
+
+    // With the flag: the routable file ships, the other two are reported.
+    const result = ship({
+      archiveDir: 'archive',
+      brainMap,
+      dryRun: true,
+      skipUnroutable: true
+    })
+    assert.equal(result.shipped, 1, 'the routable file still ships')
+    assert.equal(result.skipped, 2, 'and both unroutable ones are counted')
+
+    // Still never guesses: the skipped files went to NO source.
+    const plan = planShip({ archiveDir: 'archive', since: 0, brainMap })
+    assert.deepEqual(plan.entries.map((e) => e.sources), [['personal']])
+  })
 })

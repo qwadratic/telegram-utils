@@ -143,25 +143,100 @@ function archiveFiles(archiveDir: string, since: number): string[] {
  * brain would put private chats in the wrong one silently, which is the one
  * failure mode nobody would notice.
  */
+/** A file that cannot be routed, and the reason, so the report can say both. */
+export interface UnroutableFile {
+  file: string
+  reason: 'no-folder' | 'unmapped-folder'
+  detail: string
+}
+
+export interface ShipPlan {
+  entries: ShipPlanEntry[]
+  skipped: UnroutableFile[]
+}
+
+/**
+ * Decide what goes where.
+ *
+ * Refusing to guess a destination brain is deliberate and tested (eval-44): a
+ * file whose folder is unknown must never be silently filed somewhere. But
+ * failing the WHOLE RUN on the first such file was too blunt - on this operator's
+ * archive, 38 chats belong to no tracked folder (exported directly, or the
+ * folder changed later), and those 38 blocked the other 92 from ever reaching
+ * the brain. One unroutable file should cost one file, not the run.
+ *
+ * So unroutable files are now COLLECTED rather than thrown on, and the caller
+ * decides: `--skip-unroutable` proceeds with the rest and reports the skips,
+ * the default still fails loudly. Neither path ever guesses.
+ */
 export function planShip(options: {
   archiveDir: string
   since: number
   brainMap: Map<number, string>
-}): ShipPlanEntry[] {
-  return archiveFiles(options.archiveDir, options.since).map((file) => {
+}): ShipPlan {
+  const entries: ShipPlanEntry[] = []
+  const skipped: UnroutableFile[] = []
+
+  for (const file of archiveFiles(options.archiveDir, options.since)) {
     const folderIds = readFolderIds(readFileSync(file, 'utf-8'))
+
     if (folderIds.length === 0) {
-      throw new ShipError(`${file}: no folder_ids in frontmatter - nothing says which brain owns it`)
+      skipped.push({
+        file,
+        reason: 'no-folder',
+        detail: 'this chat is in no tracked folder, so nothing says which brain owns it'
+      })
+      continue
     }
-    const sources = folderIds.map((id) => {
-      const source = options.brainMap.get(id)
-      if (!source) {
-        throw new ShipError(`${file}: folder ${id} is not in TG_BRAIN_MAP - refusing to guess a brain`)
-      }
-      return source
-    })
-    return { file, slug: slugForFile(file), sources: [...new Set(sources)] }
-  })
+
+    const unmapped = folderIds.filter((id) => !options.brainMap.get(id))
+    if (unmapped.length > 0) {
+      skipped.push({
+        file,
+        reason: 'unmapped-folder',
+        detail: `folder ${unmapped.join(', ')} is not in TG_BRAIN_MAP`
+      })
+      continue
+    }
+
+    const sources = folderIds.map((id) => options.brainMap.get(id) as string)
+    entries.push({ file, slug: slugForFile(file), sources: [...new Set(sources)] })
+  }
+
+  return { entries, skipped }
+}
+
+/**
+ * The message shown when unroutable files are NOT being skipped.
+ *
+ * Says what to do, not just what is wrong: the old text ("nothing says which
+ * brain owns it") named the problem and left the operator to work out that
+ * either a folder mapping or --skip-unroutable was the answer.
+ */
+export function unroutableError(skipped: UnroutableFile[]): ShipError {
+  const byReason = {
+    'no-folder': skipped.filter((s) => s.reason === 'no-folder'),
+    'unmapped-folder': skipped.filter((s) => s.reason === 'unmapped-folder')
+  }
+
+  const lines = [`${skipped.length} file(s) cannot be routed to a brain:`]
+
+  if (byReason['no-folder'].length > 0) {
+    lines.push(
+      `  ${byReason['no-folder'].length} in no tracked folder, e.g. ${basename(byReason['no-folder'][0].file)}`,
+      '    Track the folder they live in (tg setup), or pass --skip-unroutable.'
+    )
+  }
+  if (byReason['unmapped-folder'].length > 0) {
+    const ids = [...new Set(byReason['unmapped-folder'].flatMap((s) => s.detail.match(/\d+/g) ?? []))]
+    lines.push(
+      `  ${byReason['unmapped-folder'].length} in folder(s) missing from TG_BRAIN_MAP: ${ids.join(', ')}`,
+      `    Add them:  TG_BRAIN_MAP="${ids.map((i) => `${i}=<source>`).join(',')}"`
+    )
+  }
+
+  lines.push('  Nothing was shipped. No file is ever filed into a guessed brain.')
+  return new ShipError(lines.join('\n'))
 }
 
 function capture(gbrainBin: string, file: string, slug: string, source: string): void {
@@ -206,7 +281,9 @@ export function ship(options: {
   brainMap?: Map<number, string>
   gbrainBin?: string
   all?: boolean
-} = {}): { shipped: number; captures: number } {
+  /** Ship what CAN be routed; report the rest instead of failing the run. */
+  skipUnroutable?: boolean
+} = {}): { shipped: number; captures: number; skipped: number } {
   const archiveDir = options.archiveDir ?? join('data', 'archive')
   const stamp = join(archiveDir, '.last-ship')
   const since = options.all || !existsSync(stamp) ? 0 : statSync(stamp).mtimeMs
@@ -215,11 +292,20 @@ export function ship(options: {
 
   const startedAt = Date.now()
   let captures = 0
-  let plan: ShipPlanEntry[] = []
+  let entries: ShipPlanEntry[] = []
+  let skipped: UnroutableFile[] = []
 
   try {
-    plan = planShip({ archiveDir, since, brainMap })
-    for (const entry of plan) {
+    const plan = planShip({ archiveDir, since, brainMap })
+    entries = plan.entries
+    skipped = plan.skipped
+
+    // Refusing to guess is the invariant; failing the whole run is not. Without
+    // --skip-unroutable one unroutable file still stops everything, loudly and
+    // with the fix in the message.
+    if (skipped.length > 0 && !options.skipUnroutable) throw unroutableError(skipped)
+
+    for (const entry of entries) {
       for (const source of entry.sources) {
         if (options.dryRun) {
           console.log(`would capture ${entry.slug} -> ${source} (${entry.file})`)
@@ -233,7 +319,11 @@ export function ship(options: {
     // One heartbeat per run either way: a run that fails silently looks
     // exactly like a run that never fired.
     if (!options.dryRun) {
-      heartbeat('error', { captures, error: error instanceof Error ? error.message : String(error) })
+      heartbeat('error', {
+        captures,
+        skipped: skipped.length,
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
     throw error
   }
@@ -247,8 +337,15 @@ export function ship(options: {
     const startSeconds = startedAt / 1000
     appendFileSync(stamp, '')
     utimesSync(stamp, startSeconds, startSeconds)
-    heartbeat('ok', { files: plan.length, captures })
+    heartbeat('ok', { files: entries.length, captures, skipped: skipped.length })
   }
 
-  return { shipped: plan.length, captures }
+  if (skipped.length > 0) {
+    console.error(
+      `skipped ${skipped.length} unroutable file(s); nothing was guessed. ` +
+      'Run with no --skip-unroutable to see the full list and the fix.'
+    )
+  }
+
+  return { shipped: entries.length, captures, skipped: skipped.length }
 }

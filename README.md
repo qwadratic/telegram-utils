@@ -140,7 +140,14 @@ file each, incrementally, shaped for a knowledge base.
 - `folders list [--json]` — folders already synced, most recently updated first
 - `folders update [--folder <id> | --all]` — re-export one folder, or every folder stalest-first
 - `setup` — pick which folders to track
-- `ship [--dry-run] [--all]` — push new archive files into [gbrain](https://github.com/garrytan/gstack), an optional external knowledge base. **Skip this command if you do not use gbrain**; nothing else depends on it.
+- `ship [--dry-run] [--all] [--skip-unroutable]` — push new archive files into
+  [gbrain](https://github.com/garrytan/gstack), an optional external knowledge
+  base. **Skip this command if you do not use gbrain**; nothing else depends on it.
+
+  Every chat must map to a brain through its folder, and `ship` never guesses:
+  a chat in an untracked folder, or a folder missing from `TG_BRAIN_MAP`, is
+  refused. `--skip-unroutable` ships what it can and reports the rest, so one
+  unroutable chat does not block the whole archive.
 
 Recency exports are incremental and rely on `data/archive/sync-state.json` for
 per-chat watermarks. Cutoffs are interpreted in your local timezone at the start
