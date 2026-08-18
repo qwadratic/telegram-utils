@@ -375,6 +375,8 @@ export interface UpdateOutcome {
   latest: string | null
   updated: boolean
   skipped: SkipReason
+  /** Which npm prefix was written to, when one could be determined. */
+  prefix?: string | null
 }
 
 /**
@@ -425,6 +427,7 @@ export async function runUpdateCheck(
   }
 
   const ok = await installLatest()
+  const prefix = installPrefix()
   writeState({
     ...next,
     lastAttemptVersion: latest,
@@ -432,5 +435,5 @@ export async function runUpdateCheck(
     failures: ok ? 0 : (state.lastAttemptVersion === latest ? (state.failures ?? 0) + 1 : 1)
   })
 
-  return { current: currentVersion, latest, updated: ok, skipped: null }
+  return { current: currentVersion, latest, updated: ok, skipped: null, prefix }
 }

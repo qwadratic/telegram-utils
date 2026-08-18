@@ -57,7 +57,15 @@ export function registerUpdateCommand(program: Command, currentVersion: string):
           return
         }
         if (outcome.updated) {
-          console.log(chalk.green(`Updated to tg ${outcome.latest}. It applies to the next command.`))
+          // Naming the prefix is not decoration. An update that silently landed
+          // in a DIFFERENT npm prefix is the bug this feature shipped with:
+          // npm exited 0, the CLI said "Updated", and the binary on PATH never
+          // moved. Printing the directory makes that visible at a glance.
+          const where = outcome.prefix ? ` in ${outcome.prefix}` : ''
+          console.log(
+            chalk.green(`Updated to tg ${outcome.latest}${where}.`) +
+            ' It applies to the next command.'
+          )
           return
         }
 
