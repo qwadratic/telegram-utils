@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The `tgu` entry point.
+ * The `tg` entry point.
  *
  * Data paths (data/session.db, data/config.json, data/archive, data/sent.jsonl)
  * resolve against the *caller's* working directory, so one global install drives
@@ -29,7 +29,7 @@ if (existsSync(compiled)) {
 
   if (!existsSync(tsx) || !existsSync(source)) {
     process.stderr.write(
-      'tgu is not built and no TypeScript runner is available.\n' +
+      'tg is not built and no TypeScript runner is available.\n' +
       `  Expected compiled output at ${compiled}\n` +
       '  In a checkout, run:  pnpm install && pnpm build\n'
     )

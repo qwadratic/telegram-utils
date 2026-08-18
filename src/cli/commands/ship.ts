@@ -3,7 +3,7 @@ import { runCommand } from '../errors.js'
 import { ship } from '../../ship/index.js'
 
 /**
- * `tgu ship` - the only thing in this repo that ever talks to gbrain.
+ * `tg ship` - the only thing in this repo that ever talks to gbrain.
  *
  * It is a subcommand for the human's convenience and a separate PROCESS for
  * the security boundary: it must run only after the ingester has exited, and

@@ -7,7 +7,7 @@ import { readSecret, SECRETS } from '../session/psst.js'
 /**
  * A workspace is a directory that owns its own Telegram authorisation.
  *
- * WHY per-directory instead of one shared session: `tgu` is meant to be
+ * WHY per-directory instead of one shared session: `tg` is meant to be
  * installed once, globally, and used from many project directories - a chat
  * folder per project. Every one of those needs its own auth key, because two
  * clients sharing one key desynchronise Telegram's pts/qts/seq message-box state
@@ -110,7 +110,7 @@ export function scaffoldWorkspace(): { created: string[]; ignoredAdded: boolean 
   if (!dataDirIgnored()) {
     appendFileSync(
       '.gitignore',
-      `\n# tgu workspace: encrypted session plus real exported messages\n${DATA_DIR}/\n`,
+      `\n# tg workspace: encrypted session plus real exported messages\n${DATA_DIR}/\n`,
       'utf-8'
     )
     ignoredAdded = true

@@ -48,17 +48,17 @@ export interface SessionHandle {
 }
 
 function noSessionError(): OperatorError {
-  // A globally installed tgu cannot assume psst exists: it is a separate binary
+  // A globally installed tg cannot assume psst exists: it is a separate binary
   // that `npm i -g` does not bring along. Without this check the failure reads
   // "no session", which sends the operator to `session login` - where the vault
   // write fails for the same underlying reason. Name the real cause instead.
   if (!psstAvailable()) {
     return new OperatorError(
       'No usable Telegram session, and psst is not on PATH.\n' +
-      '  tgu keeps its secrets in a psst vault, which is a separate binary:\n' +
+      '  tg keeps its secrets in a psst vault, which is a separate binary:\n' +
       '    https://github.com/vpetrigo/psst\n' +
       '  Or supply the secrets directly, with no vault:\n' +
-      `    API_ID=... API_HASH=... ${SECRETS.session}=... tgu ...`
+      `    API_ID=... API_HASH=... ${SECRETS.session}=... tg ...`
     )
   }
 
@@ -66,7 +66,7 @@ function noSessionError(): OperatorError {
     'No usable Telegram session.\n' +
     `  This workspace's vault has no valid ${SECRETS.session} and the local cache\n` +
     '  is empty or stale.\n' +
-    '  Run this once, at a terminal:  tgu session login\n' +
+    '  Run this once, at a terminal:  tg session login\n' +
     '  Then unattended runs pick the session up automatically.\n' +
     '  Each workspace logs in for itself; never copy a session from another one.'
   )

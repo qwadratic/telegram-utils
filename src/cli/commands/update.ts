@@ -4,7 +4,7 @@ import { runUpdateCheck, updateSkipReason } from '../../update/index.js'
 import { runCommand } from '../errors.js'
 
 /**
- * `tgu update` - check the registry and install a newer version.
+ * `tg update` - check the registry and install a newer version.
  *
  * Also the worker the background check runs as. The hidden
  * `--background-update-check` flag is what the detached child passes; in that
@@ -13,7 +13,7 @@ import { runCommand } from '../errors.js'
 export function registerUpdateCommand(program: Command, currentVersion: string): void {
   program
     .command('update')
-    .description('Check for a newer version of tgu and install it')
+    .description('Check for a newer version of tg and install it')
     .option('--check', 'Report whether an update exists; install nothing')
     .option('--background-update-check', 'Internal: run silently as the detached checker', false)
     .action(async (options) => {
@@ -21,7 +21,7 @@ export function registerUpdateCommand(program: Command, currentVersion: string):
 
       await runCommand(async () => {
         const outcome = await runUpdateCheck(currentVersion, {
-          // An explicit `tgu update` should not wait for the daily interval.
+          // An explicit `tg update` should not wait for the daily interval.
           force: !background,
           install: !options.check
         })
@@ -49,21 +49,21 @@ export function registerUpdateCommand(program: Command, currentVersion: string):
           return
         }
         if (outcome.latest === outcome.current) {
-          console.log(chalk.green(`tgu ${outcome.current} is the latest version.`))
+          console.log(chalk.green(`tg ${outcome.current} is the latest version.`))
           return
         }
         if (options.check) {
-          console.log(`tgu ${outcome.latest} is available (you have ${outcome.current}).`)
+          console.log(`tg ${outcome.latest} is available (you have ${outcome.current}).`)
           return
         }
         if (outcome.updated) {
-          console.log(chalk.green(`Updated to tgu ${outcome.latest}. It applies to the next command.`))
+          console.log(chalk.green(`Updated to tg ${outcome.latest}. It applies to the next command.`))
           return
         }
 
         console.log(
-          chalk.yellow(`Could not install tgu ${outcome.latest} automatically.`) +
-          '\n  Run it yourself:  npm install -g telegram-utils@latest' +
+          chalk.yellow(`Could not install tg ${outcome.latest} automatically.`) +
+          '\n  Run it yourself:  npm install -g @qwadratic/tg@latest' +
           '\n  A global install often needs elevated permissions.'
         )
       })

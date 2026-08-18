@@ -8,7 +8,7 @@ import { parsePeerRef } from '../../peers/ref.js'
 import { resolveTarget, withAuthenticatedClient } from './shared.js'
 
 /**
- * `tgu watch` - wait for media that has not been sent yet.
+ * `tg watch` - wait for media that has not been sent yet.
  *
  * Holds the single-instance lock for its whole run, which can be 45 minutes, so
  * no export can run concurrently. That is the correct trade: two clients on one

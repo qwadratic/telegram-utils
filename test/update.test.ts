@@ -44,7 +44,7 @@ test('eval-67 updates are skipped in CI, when disabled, and outside a global ins
   // pipeline unreproducible.
   assert.equal(updateSkipReason({ CI: 'true' } as never), 'ci')
 
-  // This test suite runs from a checkout, never from node_modules/telegram-utils,
+  // This test suite runs from a checkout, never from node_modules/@qwadratic/tg,
   // so the global-install guard must be the reason here. That guard is what stops
   // `npm install -g` from overwriting a developer's working copy.
   assert.equal(updateSkipReason({} as never), 'not-a-global-install')
@@ -98,7 +98,7 @@ test('eval-71 the update notice never implies an install that will not happen', 
   assert.match(updateNotice('0.3.0', '0.4.0', true), /TGU_NO_UPDATE=1/)
   // After the attempts are exhausted the notice must tell the truth and hand
   // over the manual command instead of promising another silent retry.
-  assert.match(updateNotice('0.3.0', '0.4.0', false), /npm install -g telegram-utils@latest/)
+  assert.match(updateNotice('0.3.0', '0.4.0', false), /npm install -g @qwadratic\/tg@latest/)
   assert.doesNotMatch(updateNotice('0.3.0', '0.4.0', false), /background/)
 })
 
@@ -166,7 +166,7 @@ test('eval-73 the notice never promises a background update that will not happen
 })
 
 test('eval-74 a skip reason wins even over an explicitly typed update', async () => {
-  // `tgu update` typed by a human must still not install over a git checkout,
+  // `tg update` typed by a human must still not install over a git checkout,
   // ignore TGU_NO_UPDATE, or swap versions inside a CI job - in CI nobody typed
   // anything, some script did. force only retries a version that automatic
   // attempts gave up on.
@@ -183,4 +183,51 @@ test('eval-74 a skip reason wins even over an explicitly typed update', async ()
     if (original === undefined) delete process.env.CI
     else process.env.CI = original
   }
+})
+
+test('eval-75 a scoped global install is recognised, a checkout is not', async () => {
+  // The rename to @qwadratic/tg broke exactly this: the marker kept the old
+  // unscoped literal, so a real install answered "not a global install" and
+  // disabled updates permanently. Nothing caught it because the suite always
+  // runs from a checkout, where that answer happens to be correct. Passing an
+  // explicit module URL is what makes the installed case testable at all.
+  const { isGlobalInstall } = await import('../src/update/index.js')
+
+  for (const installed of [
+    'file:///usr/local/lib/node_modules/@qwadratic/tg/dist/update/index.js',
+    'file:///home/me/.npm-global/lib/node_modules/@qwadratic/tg/dist/update/index.js',
+    'file:///opt/homebrew/lib/node_modules/@qwadratic/tg/dist/update/index.js'
+  ]) {
+    assert.equal(isGlobalInstall(installed), true, `should be a global install: ${installed}`)
+  }
+
+  for (const checkout of [
+    'file:///home/me/projects/telegram-utils/src/update/index.ts',
+    'file:///home/me/projects/tg/dist/update/index.js',
+    // A DIFFERENT scoped package that merely lives near ours must not match.
+    'file:///usr/local/lib/node_modules/@someoneelse/tg/dist/update/index.js',
+    'file:///usr/local/lib/node_modules/tg/dist/update/index.js'
+  ]) {
+    assert.equal(isGlobalInstall(checkout), false, `should NOT be a global install: ${checkout}`)
+  }
+})
+
+test('eval-76 the package name is one constant, matching package.json', () => {
+  // Three things derive from it: the registry query, the install command and the
+  // install-detection marker. They drifted during the rename; this stops that.
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8')) as {
+    name: string
+    bin: Record<string, string>
+  }
+  const source = readFileSync(join(ROOT, 'src', 'update', 'index.ts'), 'utf-8')
+  const declared = /const PACKAGE_NAME = '([^']+)'/.exec(source)?.[1]
+
+  assert.equal(declared, pkg.name, 'PACKAGE_NAME and package.json name have drifted')
+  assert.deepEqual(Object.keys(pkg.bin), ['tg'], 'the command is tg, and only tg')
+
+  // No stale literal of the old name anywhere in the update path.
+  assert.ok(
+    !/telegram-utils/.test(source),
+    'src/update/index.ts still names the pre-rename package somewhere'
+  )
 })

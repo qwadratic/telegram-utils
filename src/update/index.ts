@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
  *
  * The shape matters more than the feature. A naive implementation checks the
  * registry on startup and awaits it, which puts a network round trip in front of
- * every invocation - including `tgu dump ... | jq` in a pipeline and every agent
+ * every invocation - including `tg dump ... | jq` in a pipeline and every agent
  * call. So the foreground does nothing but read one small JSON file:
  *
  *   foreground  read the cache (sync, sub-millisecond). Say one line on stderr
@@ -23,9 +23,20 @@ import { fileURLToPath } from 'node:url'
  * files npm rewrites are already resident in memory.
  */
 
+/**
+ * The published package name, in ONE place.
+ *
+ * It is used to query the registry, to build the `npm install -g` command, and
+ * to recognise an installed copy by its path. Those three drifted apart during
+ * the rename to @qwadratic/tg: the path marker kept the old name while its own
+ * doc comment was updated, so a real install reported "not a global install" and
+ * quietly disabled updates forever. Pinned by eval-76.
+ */
+export const PACKAGE_NAME = '@qwadratic/tg'
+
 /** Where the check state lives: per USER, not per workspace, since the install is global. */
 export function stateDir(): string {
-  return process.env.TGU_STATE_DIR?.trim() || join(homedir(), '.tgu')
+  return process.env.TGU_STATE_DIR?.trim() || join(homedir(), '.tg')
 }
 
 export function stateFile(): string {
@@ -114,12 +125,14 @@ export function updateSkipReason(env = process.env): SkipReason {
  * Is this a published install rather than a checkout?
  *
  * The test is the installed layout: a published copy lives inside a
- * `node_modules/telegram-utils` directory and ships `dist/`. A clone has neither
+ * `node_modules/@qwadratic/tg` directory and ships `dist/`. A clone has neither
  * of those in its path, so it can never be auto-updated over.
  */
 export function isGlobalInstall(moduleUrl = import.meta.url): boolean {
   const here = fileURLToPath(moduleUrl)
-  const marker = `${sep}node_modules${sep}telegram-utils${sep}`
+  // Built from PACKAGE_NAME so a scoped name contributes both segments
+  // (@qwadratic then tg) and a rename cannot leave a stale literal behind.
+  const marker = `${sep}node_modules${sep}${PACKAGE_NAME.split('/').join(sep)}${sep}`
   return here.includes(marker)
 }
 
@@ -147,7 +160,7 @@ export function hasExhaustedAttempts(state: UpdateState, version: string): boole
 
 /** Ask the registry for the newest published version. Null on any failure. */
 export async function fetchLatestVersion(
-  packageName = 'telegram-utils',
+  packageName = PACKAGE_NAME,
   timeoutMs = 3000
 ): Promise<string | null> {
   const controller = new AbortController()
@@ -170,7 +183,7 @@ export async function fetchLatestVersion(
 }
 
 /** Run the global install. Resolves to true when npm exits 0. */
-export function installLatest(packageName = 'telegram-utils'): Promise<boolean> {
+export function installLatest(packageName = PACKAGE_NAME): Promise<boolean> {
   return new Promise((resolve) => {
     const child = spawn('npm', ['install', '-g', `${packageName}@latest`], {
       stdio: 'ignore',
@@ -191,8 +204,8 @@ export function installLatest(packageName = 'telegram-utils'): Promise<boolean> 
  */
 export function updateNotice(current: string, latest: string, auto: boolean): string {
   return auto
-    ? `tgu ${latest} is available (you have ${current}); updating in the background. Disable with TGU_NO_UPDATE=1`
-    : `tgu ${latest} is available (you have ${current}). Run: npm install -g telegram-utils@latest`
+    ? `tg ${latest} is available (you have ${current}); updating in the background. Disable with TGU_NO_UPDATE=1`
+    : `tg ${latest} is available (you have ${current}). Run: npm install -g ${PACKAGE_NAME}@latest`
 }
 
 /** What the foreground should do, decided without any IO so it can be tested. */
@@ -275,16 +288,16 @@ export interface UpdateOutcome {
 }
 
 /**
- * Background half, and also what `tgu update` runs in the foreground.
+ * Background half, and also what `tg update` runs in the foreground.
  *
- * A skip reason ALWAYS wins, even for an explicitly typed `tgu update`. Asking
+ * A skip reason ALWAYS wins, even for an explicitly typed `tg update`. Asking
  * by hand is not a reason to install over a git checkout, to ignore
  * TGU_NO_UPDATE, or to swap versions inside a CI job - in CI in particular
  * nobody typed anything, some script did.
  *
  * `force` therefore does one thing only: it retries a version that automatic
  * attempts have given up on, which is exactly what a human running
- * `tgu update` after fixing their permissions wants.
+ * `tg update` after fixing their permissions wants.
  */
 export async function runUpdateCheck(
   currentVersion: string,

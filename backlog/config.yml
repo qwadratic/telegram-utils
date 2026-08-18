@@ -1,4 +1,4 @@
-project_name: "telegram-utils"
+project_name: "@qwadratic/tg"
 default_status: "To Do"
 statuses: ["To Do", "In Progress", "Done"]
 labels: []

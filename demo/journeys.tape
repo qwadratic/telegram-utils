@@ -1,4 +1,4 @@
-# Export journeys for tgu.
+# Export journeys for tg.
 #
 # Drives the real CLI against demo/workspace, a synthetic archive built by
 # make-fixture.mjs. Every folder and chat name on screen is invented; no real
@@ -23,13 +23,13 @@ Sleep 1s
 Show
 
 # --- Journey 1: what has already been exported, and how stale is it? ---
-Type "tgu folders list"
+Type "tg folders list"
 Sleep 500ms
 Enter
 Sleep 3s
 
 # --- Journey 2: the same view for a script or an agent ---
-Type "tgu folders list --json | jq -c '.[] | {title, lastUpdated}'"
+Type "tg folders list --json | jq -c '.[] | {title, lastUpdated}'"
 Sleep 500ms
 Enter
 Sleep 3s
@@ -39,7 +39,7 @@ Enter
 Sleep 500ms
 
 # --- Journey 3: pick a folder to re-export, stalest first is visible ---
-Type "tgu folders update"
+Type "tg folders update"
 Sleep 500ms
 Enter
 Sleep 3s
@@ -55,7 +55,7 @@ Enter
 Sleep 500ms
 
 # --- Journey 4: unattended run with no session refuses, and says what to do ---
-Type "TGU_NON_INTERACTIVE=1 tgu export chats"
+Type "TGU_NON_INTERACTIVE=1 tg export chats"
 Sleep 500ms
 Enter
 Sleep 3s
@@ -65,7 +65,7 @@ Type "sleep 60 & echo $! > data/session.lock"
 Sleep 300ms
 Enter
 Sleep 1s
-Type "tgu folders update --folder 2"
+Type "tg folders update --folder 2"
 Sleep 500ms
 Enter
 Sleep 3.5s
@@ -77,7 +77,7 @@ Sleep 500ms
 Show
 
 # --- Journey 6: one place to see session, cache and lock state ---
-Type "tgu session status"
+Type "tg session status"
 Sleep 500ms
 Enter
 Sleep 4s

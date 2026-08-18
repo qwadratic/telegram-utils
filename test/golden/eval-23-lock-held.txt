@@ -1,5 +1,5 @@
 LockHeldError
-Another tgu instance is already running (pid <PID>).
+Another tg instance is already running (pid <PID>).
   Two clients sharing one Telegram session corrupt the message-box state and
   can get the session revoked, so this run was refused.
   If that process is gone, remove the stale lock:  rm data/session.lock

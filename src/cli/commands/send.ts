@@ -17,7 +17,7 @@ import { logSummary } from '../log.js'
 import { withAuthenticatedClient } from './shared.js'
 
 /**
- * `tgu send` - the only commands that write to Telegram.
+ * `tg send` - the only commands that write to Telegram.
  *
  * Every one of them is human-invoked. Nothing in the export, folders, ship or
  * read-verb import graphs reaches this file, and `test/trust.test.ts` fails the

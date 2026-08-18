@@ -4,7 +4,7 @@ import { psstInstalled, scaffoldWorkspace, workspaceStatus } from '../../workspa
 import { runCommand } from '../errors.js'
 
 /**
- * `tgu init` - make the current directory a workspace.
+ * `tg init` - make the current directory a workspace.
  *
  * Connects to nothing. It creates directories, protects them from git, and then
  * tells the operator the one thing only a human can do: run `session login`,
@@ -13,7 +13,7 @@ import { runCommand } from '../errors.js'
 export function registerInitCommand(program: Command): void {
   program
     .command('init')
-    .description('Make the current directory a tgu workspace with its own session')
+    .description('Make the current directory a tg workspace with its own session')
     .option('--json', 'Machine-readable output')
     .action(async (options) => {
       await runCommand(async () => {
@@ -50,7 +50,7 @@ export function registerInitCommand(program: Command): void {
         console.log('')
         if (!psstInstalled()) {
           console.log(chalk.yellow('psst is not installed, so secrets have to come from the environment:'))
-          console.log(chalk.dim('       API_ID=... API_HASH=... tgu session login'))
+          console.log(chalk.dim('       API_ID=... API_HASH=... tg session login'))
           console.log(
             chalk.dim('       For unattended runs, install psst instead: https://github.com/vpetrigo/psst')
           )
@@ -65,7 +65,7 @@ export function registerInitCommand(program: Command): void {
         }
         if (!status.hasSession) {
           console.log(
-            chalk.yellow('Next:  tgu session login') +
+            chalk.yellow('Next:  tg session login') +
             chalk.dim('   once, at a terminal: this workspace gets its OWN auth key')
           )
           console.log(
@@ -75,7 +75,7 @@ export function registerInitCommand(program: Command): void {
             chalk.dim('       workspace, or Telegram may revoke all of them at once.')
           )
         } else {
-          console.log(chalk.green('Ready. Try:  tgu peers list --type user --no-bots'))
+          console.log(chalk.green('Ready. Try:  tg peers list --type user --no-bots'))
         }
       })
     })

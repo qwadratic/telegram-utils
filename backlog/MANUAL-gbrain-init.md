@@ -1,7 +1,7 @@
 # MANUAL — initialise the real gbrain brain (TASK-15)
 
 Status: **blocked on Ivan.** Everything that does not depend on it has landed;
-`tgu ship` is proven end to end against a throwaway brain (see "What was already
+`tg ship` is proven end to end against a throwaway brain (see "What was already
 proven" below). Two decisions and one credential are yours, not an agent's.
 
 > **NEVER restore anything from `~/.quarantine-gbrain-20260804`.** It contains a
@@ -78,13 +78,13 @@ gbrain sources list          # must no longer say "No brain configured"
 
 ### Then tell ship which Telegram folder feeds which brain
 
-Get the folder ids from `tgu folders list`, then put them in `/etc/tgu.env`
+Get the folder ids from `tg folders list`, then put them in `/etc/tg.env`
 (VM) or your shell (local):
 
 ```sh
 export TGU_BRAIN_MAP="7=personal,12=proximata"
-tgu ship --dry-run      # prints slug -> source per file, execs nothing
-tgu ship
+tg ship --dry-run      # prints slug -> source per file, execs nothing
+tg ship
 ```
 
 A file whose `folder_ids` names a folder that is not in the map **fails the
@@ -93,14 +93,14 @@ run**. That is deliberate: ship never picks a default brain.
 ## What was already proven, and what it does not prove
 
 Proven, against the real `gbrain 0.42.26` binary, in a throwaway brain
-(`GBRAIN_HOME=/tmp/tgu-gbrain-scratch.25he/home`, Postgres db `tgu_scratch_brain`):
+(`GBRAIN_HOME=/tmp/tg-gbrain-scratch.25he/home`, Postgres db `tgu_scratch_brain`):
 
-- a real archive file rendered by `writeChatFile` ships with `tgu ship` and
+- a real archive file rendered by `writeChatFile` ships with `tg ship` and
   comes back out of both `gbrain search` and `gbrain get <slug>`
 - gbrain parses the frontmatter as YAML and **keeps `type: note`** — no
   `legacy_type`, no silent retype
 - `folder_ids: [7]` survives as a YAML list; `title` keeps its embedded quotes
-- re-running `tgu ship` captures nothing; `tgu ship --all` re-captures and the
+- re-running `tg ship` captures nothing; `tg ship --all` re-captures and the
   brain still holds exactly one page — the slug is doing its job as the
   `UNIQUE (source_id, slug)` dedup key
 - an unroutable file exits non-zero with the filename in the message
@@ -115,7 +115,7 @@ and must drop `--source`.
 Cleanup of the scratch brain, whenever you like:
 
 ```sh
-rm -rf /tmp/tgu-gbrain-scratch.25he
+rm -rf /tmp/tg-gbrain-scratch.25he
 dropdb tgu_scratch_brain
 ```
 

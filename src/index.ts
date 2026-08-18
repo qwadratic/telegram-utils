@@ -25,7 +25,7 @@ import { scheduleUpdateCheck } from './update/index.js'
 const VERSION = '0.3.0'
 
 const program = new Command()
-  .name('tgu')
+  .name('tg')
   .description('Read, archive and send Telegram from the command line')
   .version(VERSION)
 

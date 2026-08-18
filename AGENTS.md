@@ -13,11 +13,11 @@ Always set `TGU_NON_INTERACTIVE=1`. Without it, a run with a pty attached that
 has no session will stop on "Enter your phone number" and wait forever.
 
 ```sh
-TGU_NON_INTERACTIVE=1 tgu folders list --json
+TGU_NON_INTERACTIVE=1 tg folders list --json
 ```
 
 Only a human can create a session, because only a human receives the login code.
-When you see `No usable Telegram session`, stop and ask for `tgu session login`
+When you see `No usable Telegram session`, stop and ask for `tg session login`
 to be run at a terminal. Do not try to work around it.
 
 ## Never print a session
@@ -25,7 +25,7 @@ to be run at a terminal. Do not try to work around it.
 `TG_SESSION_STRING` is a full account credential: whoever holds it is logged in
 as the user, and no password or 2FA challenge stands in the way.
 
-- Do not `psst get TG_SESSION_STRING` to "check" it. Use `tgu session status`,
+- Do not `psst get TG_SESSION_STRING` to "check" it. Use `tg session status`,
   which prints a fingerprint.
 - Do not echo it into a log, a commit, an issue, or a demo recording.
 - Write secrets with `psst set NAME --stdin` so the value goes over a pipe and
@@ -36,7 +36,7 @@ Active Sessions) is the fix. Deleting the vault entry does nothing.
 
 ## Never move a session between directories or hosts
 
-Each workspace runs its own `tgu session login` and owns its own auth key. Do not
+Each workspace runs its own `tg session login` and owns its own auth key. Do not
 copy `TG_SESSION_STRING` from one workspace or machine to another, and do not
 "helpfully" seed a new workspace from an existing one.
 
@@ -53,7 +53,7 @@ person, so it has rules that are enforced by `test/trust.test.ts`, not by taste:
 - **Prefer a numeric id when you have one.** Commands also accept `@username`
   and `t.me` links (D17), which is convenient and is also how you reach the
   wrong person: `@durov` and `@durvo` both exist and belong to different people.
-  When an id is available - from `tgu peers find <name> --id-only` or from a
+  When an id is available - from `tg peers find <name> --id-only` or from a
   previous resolution - use it. When you use a handle, read the resolved
   identity line back to the operator before continuing.
 - **Never pass a name the operator did not give you verbatim.** Do not guess a
@@ -76,17 +76,17 @@ person, so it has rules that are enforced by `test/trust.test.ts`, not by taste:
   and fail if any of them can reach it. That is what makes "a cron job cannot
   message anyone" a fact rather than a hope.
 
-`tgu send log` shows what this workspace has already sent. Check it before
+`tg send log` shows what this workspace has already sent. Check it before
 sending anything in a series.
 
 ## Do not fight the updater
 
 A global install updates itself daily in a detached background process. If you
-are scripting `tgu`, set `TGU_NO_UPDATE=1` for reproducibility rather than
+are scripting `tg`, set `TGU_NO_UPDATE=1` for reproducibility rather than
 letting a version change under a long workflow. `CI=true` already does this.
 
-Never call `npm install -g telegram-utils` yourself to "fix" a version notice:
-`tgu update` exists, knows whether this is even a global install, and records
+Never call `npm install -g @qwadratic/tg` yourself to "fix" a version notice:
+`tg update` exists, knows whether this is even a global install, and records
 the attempt so a failing install stops retrying.
 
 ## One instance at a time
@@ -97,7 +97,7 @@ commands in the same workspace concurrently and do not delete the lock to
 state and can get the session revoked. If a lock is genuinely stale, the next run
 reclaims it on its own once the recorded pid is gone.
 
-`tgu watch` holds the lock for as long as it runs, up to 45 minutes by default.
+`tg watch` holds the lock for as long as it runs, up to 45 minutes by default.
 That is intended. Do not start an export beside it.
 
 ## Layout
@@ -109,7 +109,7 @@ That is intended. Do not start an export beside it.
 | `src/session/lock.ts` | single-instance lock |
 | `src/session/cache.ts` | local encrypted cache and peer-count helpers |
 | `src/session/index.ts` | `openSession` / `withSession` — the entry point for auth |
-| `src/workspace/index.ts` | `tgu init` scaffolding and workspace status |
+| `src/workspace/index.ts` | `tg init` scaffolding and workspace status |
 | `src/peers/ref.ts` | `parsePeerRef` / `resolvePeerRef` — id, @username, t.me link or `me` |
 | `src/peers/id.ts` | `assertPeerId` — the send module's own numeric boundary |
 | `src/peers/index.ts` | dialog listing and name matching |

@@ -44,7 +44,7 @@ function invalid(raw: string, why: string): OperatorError {
   return new OperatorError(
     `Cannot use ${JSON.stringify(raw)} as a chat: ${why}\n` +
     '  Accepted forms:\n' +
-    '    108844221            a numeric id (from `tgu peers find <name>`)\n' +
+    '    108844221            a numeric id (from `tg peers find <name>`)\n' +
     '    @durov               a username\n' +
     '    https://t.me/durov   a public link\n' +
     '    me                   your own Saved Messages'
@@ -81,7 +81,7 @@ export function parsePeerRef(raw: string): PeerRef {
     if (handle.startsWith('+') || handle.toLowerCase() === 'joinchat') {
       throw invalid(
         raw,
-        'that is a private invite link. Join the chat in Telegram first, then find it with `tgu peers find`'
+        'that is a private invite link. Join the chat in Telegram first, then find it with `tg peers find`'
       )
     }
     if (!USERNAME.test(handle)) throw invalid(raw, `"${handle}" is not a valid username`)
@@ -133,8 +133,8 @@ export async function resolvePeerRef(tg: TelegramClient, raw: string): Promise<R
       `No chat found for ${JSON.stringify(ref.raw)} (${detail}).\n` +
       (ref.kind === 'username'
         ? '  Usernames only resolve for public chats and people you can reach.\n' +
-          '  For a private chat, find it with:  tgu peers find <name>'
-        : '  Check the id with:  tgu peers find <name>')
+          '  For a private chat, find it with:  tg peers find <name>'
+        : '  Check the id with:  tg peers find <name>')
     )
   }
 

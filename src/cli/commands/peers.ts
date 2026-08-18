@@ -72,7 +72,7 @@ export function registerPeersCommand(program: Command): void {
         )
 
         // --id-only exists so name-to-id composes without jq:
-        //   tgu dump "$(tgu peers find zoe --id-only)"
+        //   tg dump "$(tg peers find zoe --id-only)"
         // It REFUSES on ambiguity rather than guessing, because silently picking
         // the first of several people is how the wrong chat gets read or texted.
         if (options.idOnly) {

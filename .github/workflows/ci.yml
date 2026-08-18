@@ -94,13 +94,13 @@ jobs:
         run: |
           mkdir -p /tmp/ws && cd /tmp/ws
 
-          test "$(tgu --version)" = "$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
+          test "$(tg --version)" = "$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
           echo "version ok"
 
           # init must succeed with no psst, no vault and no session, and must
           # not connect. The runner has no psst, which is exactly the state a
           # new user is in.
-          tgu init --json > init.json
+          tg init --json > init.json
           cat init.json
           node -e "
             const s = require('/tmp/ws/init.json');
@@ -113,11 +113,11 @@ jobs:
           test -d data/archive && echo "init ok"
 
           # The offline guards must fire without a session or a network call.
-          tgu dump '@durov' 2>&1 | grep -q 'No usable Telegram session' && echo "session gate ok"
-          tgu dump 'has space' 2>&1 | grep -q 'Cannot use' && echo "reference gate ok"
-          tgu dump '@durоv' 2>&1 | grep -q 'non-ASCII' && echo "homoglyph gate ok"
+          tg dump '@durov' 2>&1 | grep -q 'No usable Telegram session' && echo "session gate ok"
+          tg dump 'has space' 2>&1 | grep -q 'Cannot use' && echo "reference gate ok"
+          tg dump '@durоv' 2>&1 | grep -q 'non-ASCII' && echo "homoglyph gate ok"
 
           # Updates must be inert in CI, or a build agent swaps versions mid-run.
-          tgu update 2>&1 | grep -q 'skipped in CI' && echo "update gate ok"
+          tg update 2>&1 | grep -q 'skipped in CI' && echo "update gate ok"
         env:
           TGU_NON_INTERACTIVE: '1'

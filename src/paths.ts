@@ -3,10 +3,10 @@ import { join } from 'node:path'
 /**
  * Every path this tool reads or writes, derived from one root.
  *
- * WHY one module: a workspace is a directory. `tgu` in ~/project-a and `tgu` in
+ * WHY one module: a workspace is a directory. `tg` in ~/project-a and `tg` in
  * ~/project-b must not see each other's session, config, watermarks or archive,
  * because each workspace holds its OWN Telegram authorisation (see
- * `docs/workspaces.md`). Before this module the root was spelled out four
+ * "Workspaces" in README.md). Before this module the root was spelled out four
  * separate times as a literal, so "point this run somewhere else" was not
  * expressible - which is exactly the ceiling the decision log flagged:
  *

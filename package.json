@@ -1,5 +1,5 @@
 {
-  "name": "telegram-utils",
+  "name": "@qwadratic/tg",
   "version": "0.3.0",
   "description": "Read, archive and send your own Telegram from the command line or an agent",
   "keywords": [
@@ -26,8 +26,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "telegram-utils": "bin/tgu.mjs",
-    "tgu": "bin/tgu.mjs"
+    "tg": "bin/tg.mjs"
   },
   "files": [
     "dist",

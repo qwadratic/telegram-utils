@@ -63,11 +63,14 @@ jobs:
 
       # Refuse to republish an existing version, which npm rejects anyway, but
       # failing here gives a readable reason instead of a registry error.
+      # Name and version both come from package.json: hardcoding either is how
+      # the pre-rename name survived here after everything else had moved.
       - name: Version must not already be published
         run: |
+          NAME="$(node -p "require('./package.json').name")"
           PKG="$(node -p "require('./package.json').version")"
-          if npm view "telegram-utils@$PKG" version >/dev/null 2>&1; then
-            echo "::error::telegram-utils@$PKG is already on the registry. Bump the version."
+          if npm view "$NAME@$PKG" version >/dev/null 2>&1; then
+            echo "::error::$NAME@$PKG is already on the registry. Bump the version."
             exit 1
           fi
 

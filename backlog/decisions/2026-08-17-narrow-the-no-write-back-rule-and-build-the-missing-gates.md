@@ -180,3 +180,46 @@ ALSO: `peers find --id-only` prints exactly one id for shell composition and
 REFUSES when the needle matches several chats, rather than picking the first.
 Silent first-match selection would reintroduce the wrong-person failure through
 the back door.
+
+## Amendment 2026-08-18 — D18: the package is `@qwadratic/tg`, the command is `tg`
+
+DECIDED by the operator: publish as `@qwadratic/tg`; the installed command is
+`tg`. Supersedes D1's `telegram-utils` / `tgu` naming.
+
+BECAUSE npm refused the unscoped name outright:
+
+> 403 Forbidden - Package name too similar to existing package telegramutils;
+> try renaming your package to '@qwadratic/telegram-utils'
+
+`telegramutils` is abandoned - six versions, last published 2018 - but npm's
+similarity check does not care. Scoped names skip that check entirely, so a
+scope was the only candidate guaranteed to publish. `tgu`, `tgutils` and
+`telegram-utils-cli` were all free but sit equally close to the blocked name and
+`tgu-cli`, so any of them could have produced the same 403 on the next attempt.
+
+The GitHub repository is NOT renamed. `repository`, `homepage` and `bugs` still
+point at qwadratic/telegram-utils, which is where the code actually lives.
+
+ENV VARS KEEP THE `TGU_` PREFIX, deliberately. Renaming them to `TG_` would put
+settings in the same namespace as the vault secrets (`TG_SESSION_STRING`,
+`TG_API_ID`), which D1 rejected for its own reasons, and - more concretely - the
+operator's existing agent instructions and workflows in other repositories pass
+`TGU_NON_INTERACTIVE=1`. If that stopped being read, an unattended run would hang
+forever on a phone-number prompt, which is the exact failure that variable
+exists to prevent. A rename there is a separate change needing a fallback shim.
+
+WHAT THE RENAME BROKE, and how it was caught. `isGlobalInstall()` built its path
+marker from a hardcoded `node_modules/telegram-utils/` literal assembled out of
+`${sep}` fragments, so the bulk rename updated the doc comment above it and left
+the code alone. A real scoped install then reported "not a global install" and
+disabled auto-update permanently and silently. No test caught it, because the
+suite always runs from a checkout where that answer is correct. Fixed by
+deriving the marker from a single `PACKAGE_NAME` constant, and pinned by eval-75
+(fake module URLs standing in for an installed copy, including a near-miss
+`@someoneelse/tg`) and eval-76 (the constant matches package.json).
+
+`ponytail:` three literals now derive from `PACKAGE_NAME`, but `bin.tg` in
+package.json and the smoke job's `tg` invocations are still independent strings.
+Ceiling: renaming the COMMAND, as opposed to the package, still touches several
+places. Upgrade path if that ever happens: assert the bin key inside eval-76,
+which already reads package.json (it checks the key is exactly `tg` today).

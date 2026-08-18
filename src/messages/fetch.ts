@@ -12,7 +12,7 @@ export interface FetchMessagesOptions {
   /**
    * Stop after yielding this many messages.
    *
-   * For bounded reads (`tgu dump`, `tgu media pull`) where the caller wants a
+   * For bounded reads (`tg dump`, `tg media pull`) where the caller wants a
    * slice, not the whole history. Omitted means "until the chat runs out",
    * which is what the export path needs.
    */

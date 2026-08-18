@@ -8,10 +8,10 @@ import { parseSince } from '../args.js'
 import { describePeer, parsePeerRef, resolvePeerRef } from '../../peers/ref.js'
 
 /**
- * `tgu dump <peer>` - one chat as a flat transcript on stdout.
+ * `tg dump <peer>` - one chat as a flat transcript on stdout.
  *
  * Errors go to stderr in plain text and the payload goes to stdout, so this
- * pipes: `tgu dump @durov --since last-7-days > thread.txt`.
+ * pipes: `tg dump @durov --since last-7-days > thread.txt`.
  */
 export function registerDumpCommand(program: Command): void {
   program

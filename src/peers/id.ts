@@ -8,7 +8,7 @@ import { OperatorError } from '../errors.js'
  * points the command at the wrong person's chat. On the send path there is no
  * undo; on a dump it means quietly reading a stranger's conversation.
  *
- * `tgu peers find <name>` exists to do that lookup as a separate, read-only step
+ * `tg peers find <name>` exists to do that lookup as a separate, read-only step
  * whose output a human reads before pasting an id here.
  *
  * Lives in its own module, importing nothing but the error type, so read-only
@@ -22,7 +22,7 @@ export function assertPeerId(raw: string | number): number {
     throw new OperatorError(
       `Not a numeric peer id: ${JSON.stringify(String(raw))}\n` +
       '  Commands take an id, never a name or @username, so a typo cannot reach\n' +
-      '  the wrong chat. Find the id first:  tgu peers find <name>'
+      '  the wrong chat. Find the id first:  tg peers find <name>'
     )
   }
   return id

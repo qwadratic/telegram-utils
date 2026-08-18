@@ -56,7 +56,7 @@ function psstGet(name: string, global: boolean): string | null {
  * Memoised: this is asked on an error path that may run after several failed
  * lookups, and each check costs a process spawn.
  *
- * Matters because `tgu` is installed globally with npm, and psst is a separate
+ * Matters because `tg` is installed globally with npm, and psst is a separate
  * Rust binary npm knows nothing about. Distinguishing "no secret" from "no
  * secret store" is the difference between an actionable message and a wrong one.
  */
@@ -131,7 +131,7 @@ export function writeSecret(name: string, value: string): void {
     throw new OperatorError(
       `Could not store ${name} in psst (${detail}).\n` +
       `  Initialise a vault in this directory:  psst init\n` +
-      `  Or inject the value directly:  ${name}=... tgu ...`
+      `  Or inject the value directly:  ${name}=... tg ...`
     )
   }
 }

@@ -1,5 +1,5 @@
 /**
- * `tgu ship` - the gbrain side of the security boundary.
+ * `tg ship` - the gbrain side of the security boundary.
  *
  * Two things are being defended here. First, that the loop is idempotent:
  * gbrain enforces UNIQUE (source_id, slug), so a stable slug is the whole
@@ -21,7 +21,7 @@ const SRC = fileURLToPath(new URL('../src/', import.meta.url))
 // Every test writes into its own temp dir, but the heartbeat path defaults to
 // the real ~/.gbrain. Redirect it once, here, so the suite never appends a
 // line to a human's actual brain.
-process.env.TGU_HEARTBEAT_PATH = join(mkdtempSync(join(tmpdir(), 'tgu-beat-')), 'heartbeat.jsonl')
+process.env.TGU_HEARTBEAT_PATH = join(mkdtempSync(join(tmpdir(), 'tg-beat-')), 'heartbeat.jsonl')
 
 function page(folderIds: string, body = 'hello'): string {
   return `---\ntype: note\ntitle: "T"\nchat_id: 1\nfolder_ids: ${folderIds}\n---\n\n${body}\n`

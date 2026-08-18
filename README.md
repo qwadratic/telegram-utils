@@ -1,46 +1,44 @@
-# Telegram Utils
+# tg
 
 A command-line tool for reading your own Telegram from a terminal or an agent:
 find a chat, dump a thread, pull media, archive folders into Markdown, and send
 a message when you mean to.
-
-`tgu` and `telegram-utils` are the same command; `tgu` is what the examples type.
 
 ![Export journeys](https://raw.githubusercontent.com/qwadratic/telegram-utils/master/demo/out/telegram-utils-export-journeys.gif)
 
 ## Install
 
 ```sh
-npm install -g telegram-utils
+npm install -g @qwadratic/tg
 ```
 
 ### Secrets
 
-`tgu` needs your Telegram `API_ID` and `API_HASH` (get them at
+`tg` needs your Telegram `API_ID` and `API_HASH` (get them at
 [my.telegram.org](https://my.telegram.org/apps)). Two ways to supply them:
 
 **Environment variables**, if you already have a way to manage secrets:
 
 ```sh
-API_ID=... API_HASH=... tgu session login
+API_ID=... API_HASH=... tg session login
 ```
 
 **Or [psst](https://github.com/vpetrigo/psst)**, a small encrypted vault, which
-is what `tgu init` sets up and what makes unattended runs work without any
+is what `tg init` sets up and what makes unattended runs work without any
 secret sitting in your shell history. It is a separate binary that `npm` cannot
-install for you; `tgu init` checks and tells you if it is missing.
+install for you; `tg init` checks and tells you if it is missing.
 
 ## Quick start
 
 ```sh
 mkdir ~/chats/work && cd ~/chats/work
 
-tgu init                 # scaffold this directory as a workspace
+tg init                 # scaffold this directory as a workspace
 psst init                # a vault for this workspace (or use env vars, see below)
-tgu session login        # once, at a terminal: phone + code + 2FA
+tg session login        # once, at a terminal: phone + code + 2FA
 
-tgu peers list --type user --no-bots   # who do I talk to?
-tgu dump @durov --since last-7-days    # read one thread
+tg peers list --type user --no-bots   # who do I talk to?
+tg dump @durov --since last-7-days    # read one thread
 ```
 
 After `session login`, no command ever prompts for a password again. That is
@@ -58,7 +56,7 @@ send log.
 ```
 
 `cd` selects the workspace. No flag, no global config. Set `TGU_DATA_DIR` to
-point the data root somewhere else, e.g. `TGU_DATA_DIR=/srv/tgu` for a service.
+point the data root somewhere else, e.g. `TGU_DATA_DIR=/srv/tg` for a service.
 
 **Each workspace logs in separately and owns its own auth key.** This is the
 important rule and the reason `init` does not offer to copy a session:
@@ -80,7 +78,7 @@ the *application*, not the login, and Telegram expects one app to have many user
 sessions, so a new workspace inherits them from your global vault (also accepted
 as `TG_API_ID` / `TG_API_HASH`) and only has to do the phone-code step.
 
-`tgu init` also chmods the data root to `0700` and adds it to `.gitignore`,
+`tg init` also chmods the data root to `0700` and adds it to `.gitignore`,
 because that directory holds a full account credential *and* real messages.
 
 ## Reading
@@ -98,10 +96,10 @@ because that directory holds a full account credential *and* real messages.
 Anywhere a command takes a chat, all four of these work:
 
 ```sh
-tgu dump 904417238             # a numeric id
-tgu dump @durov                # a username
-tgu dump https://t.me/durov    # a public link
-tgu dump me                    # your own Saved Messages
+tg dump 904417238             # a numeric id
+tg dump @durov                # a username
+tg dump https://t.me/durov    # a public link
+tg dump me                    # your own Saved Messages
 ```
 
 Whatever you type, the command resolves it and prints the identity it landed on
@@ -120,8 +118,8 @@ Usernames only resolve for public chats and people you can reach. For a private
 chat, look it up first:
 
 ```sh
-tgu peers find zoe                        # a table you read with your eyes
-tgu dump "$(tgu peers find zoe --id-only)"   # or compose it directly
+tg peers find zoe                        # a table you read with your eyes
+tg dump "$(tg peers find zoe --id-only)"   # or compose it directly
 ```
 
 `--id-only` prints one id and nothing else, and **fails when the needle matches
@@ -249,13 +247,13 @@ run at the same time.
 ## Staying current
 
 A global install keeps itself up to date. Once a day, in a detached background
-process, `tgu` asks the registry for the newest version and installs it if there
+process, `tg` asks the registry for the newest version and installs it if there
 is one. Nothing is added to the time your command takes: the foreground reads a
 single small cache file and moves on.
 
 ```sh
-tgu update            # check and install right now
-tgu update --check    # is there a newer version? install nothing
+tg update            # check and install right now
+tg update --check    # is there a newer version? install nothing
 ```
 
 The new version applies to your **next** command, not the running one.
@@ -268,7 +266,7 @@ export TGU_UPDATE_INTERVAL_HOURS=168   # or just check less often
 ```
 
 Auto-update is skipped automatically when `CI` is set, so a build agent never
-swaps versions mid-pipeline, and when `tgu` is running from a git checkout, so
+swaps versions mid-pipeline, and when `tg` is running from a git checkout, so
 `npm install -g` can never overwrite a working copy. If an install fails twice
 (usually a global prefix that needs elevated permissions) it stops retrying and
 tells you the command to run yourself.
@@ -281,7 +279,7 @@ which ties each tarball to the commit and workflow run that produced it, so you
 can verify what you got:
 
 ```sh
-npm view telegram-utils --json | jq .dist.attestations
+npm view @qwadratic/tg --json | jq .dist.attestations
 ```
 
 If that trade is not one you want, `TGU_NO_UPDATE=1` leaves you in full control.

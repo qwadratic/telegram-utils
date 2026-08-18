@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily telegram-utils export + gbrain ship
+Description=Daily tg export + gbrain ship
 
 [Timer]
 # Odd minute per the house cron-stagger rule: nothing else on the host wakes
@@ -7,7 +7,7 @@ Description=Daily telegram-utils export + gbrain ship
 # skipping a day, which matters because a skipped day is a gap in the archive.
 OnCalendar=*-*-* 04:17:00
 Persistent=true
-Unit=tgu.service
+Unit=tg.service
 
 [Install]
 WantedBy=timers.target

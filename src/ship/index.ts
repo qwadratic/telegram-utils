@@ -5,7 +5,7 @@
  *   1. Nothing holding a Telegram credential may call an LLM or gbrain.
  *   2. Nothing talking to gbrain may hold a Telegram credential.
  *
- * `tgu ship` is a subcommand of the same binary for the human's convenience,
+ * `tg ship` is a subcommand of the same binary for the human's convenience,
  * but it is its own process and this module imports NOTHING from src/session,
  * src/client.ts or @mtcute. It reads finished markdown off disk and execs the
  * gbrain CLI. The eval in test/ship.test.ts walks this file's transitive
@@ -31,7 +31,7 @@ export const SHIP_STAMP_PATH = 'data/archive/.last-ship'
  */
 function heartbeatPath(): string {
   return process.env.TGU_HEARTBEAT_PATH
-    ?? join(homedir(), '.gbrain', 'integrations', 'telegram-utils', 'heartbeat.jsonl')
+    ?? join(homedir(), '.gbrain', 'integrations', '@qwadratic/tg', 'heartbeat.jsonl')
 }
 
 export interface ShipPlanEntry {
