@@ -19,11 +19,15 @@ import { registerDumpCommand } from './cli/commands/dump.js'
 import { registerMediaCommand } from './cli/commands/media.js'
 import { registerWatchCommand } from './cli/commands/watch.js'
 import { registerSendCommand } from './cli/commands/send.js'
+import { registerUpdateCommand } from './cli/commands/update.js'
+import { scheduleUpdateCheck } from './update/index.js'
+
+const VERSION = '0.3.0'
 
 const program = new Command()
   .name('tgu')
   .description('Read, archive and send Telegram from the command line')
-  .version('0.3.0')
+  .version(VERSION)
 
 registerInitCommand(program)
 registerAuthCommand(program)
@@ -54,5 +58,10 @@ registerShipCommand(program)
 // Write verbs last, and registered from one place, so the only path into
 // `src/send/` is a command a human typed. See test/trust.test.ts.
 registerSendCommand(program)
+registerUpdateCommand(program, VERSION)
+
+// One synchronous file read, then a detached child if the cache is stale. This
+// deliberately runs before parse() and adds no measurable time to any command.
+scheduleUpdateCheck(VERSION)
 
 program.parse()

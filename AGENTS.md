@@ -79,6 +79,16 @@ person, so it has rules that are enforced by `test/trust.test.ts`, not by taste:
 `tgu send log` shows what this workspace has already sent. Check it before
 sending anything in a series.
 
+## Do not fight the updater
+
+A global install updates itself daily in a detached background process. If you
+are scripting `tgu`, set `TGU_NO_UPDATE=1` for reproducibility rather than
+letting a version change under a long workflow. `CI=true` already does this.
+
+Never call `npm install -g telegram-utils` yourself to "fix" a version notice:
+`tgu update` exists, knows whether this is even a global install, and records
+the attempt so a failing install stops retrying.
+
 ## One instance at a time
 
 `data/session.lock` is taken by every command that connects. Do not run two
@@ -110,6 +120,7 @@ That is intended. Do not start an export beside it.
 | `src/send/index.ts` | **the only module that calls a Telegram write RPC** |
 | `src/messages/fetch.ts` | the single rate-limited history iterator. Do not add a second |
 | `src/folders/status.ts` | pure derivation of folder recency from sync state |
+| `src/update/index.ts` | self-update: cache, version compare, detached worker |
 | `src/cli/commands/` | one file per command group, registered in `src/index.ts` |
 
 Data paths resolve against `TGU_DATA_DIR`, default `data`, which is relative — so
@@ -128,6 +139,8 @@ they resolve against the current directory at the moment of the call. That is ho
 - `--json` writes only the payload to stdout. Progress and warnings go to stderr.
 - Tests are `node:test` + `assert`, no framework: `pnpm test`.
 - Typecheck with `npx tsc --noEmit` before calling anything done.
+- The version lives as a literal in `src/index.ts` AND in `package.json`.
+  eval-72 fails if they drift; change both or neither.
 
 ## Goldens
 

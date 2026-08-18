@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  # Lets the publish workflow reuse these exact gates instead of copying them.
+  workflow_call:
+
+# Cancel a superseded run rather than paying for a result nobody will read.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor declared in package.json engines, and current LTS. If the
+        # floor breaks, engines is wrong and someone's install is broken.
+        node: ['20', '22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from the packageManager field in package.json, so CI and
+      # a contributor's laptop cannot drift apart.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      # --frozen-lockfile: CI must fail on a lockfile that disagrees with
+      # package.json rather than quietly resolving something else.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # The published artefact is dist/, so a green suite over uncompiled source
+      # is not enough on its own.
+      - name: Build
+        run: pnpm run build
+
+      # Guards the thing that actually bit us: the package once shipped tests,
+      # the backlog and an 800kB demo recording to everyone who installed it.
+      # Reads the structured file list, because the human-readable `npm notice`
+      # lines are easy to write a pattern against that silently matches nothing.
+      - name: Verify the package contents
+        run: node scripts/check-package-contents.mjs

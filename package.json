@@ -21,6 +21,7 @@
     "url": "git+https://github.com/qwadratic/telegram-utils.git"
   },
   "license": "ISC",
+  "packageManager": "pnpm@11.9.0",
   "author": "qwadratic",
   "type": "module",
   "main": "dist/index.js",

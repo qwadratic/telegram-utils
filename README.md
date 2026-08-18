@@ -246,13 +246,71 @@ run at the same time.
 - Rate limiting is built in: history reads pause 1.5s plus jitter every 100
   messages, and `FLOOD_WAIT` is caught and waited out.
 
+## Staying current
+
+A global install keeps itself up to date. Once a day, in a detached background
+process, `tgu` asks the registry for the newest version and installs it if there
+is one. Nothing is added to the time your command takes: the foreground reads a
+single small cache file and moves on.
+
+```sh
+tgu update            # check and install right now
+tgu update --check    # is there a newer version? install nothing
+```
+
+The new version applies to your **next** command, not the running one.
+
+Turn it off:
+
+```sh
+export TGU_NO_UPDATE=1                 # never check, never install
+export TGU_UPDATE_INTERVAL_HOURS=168   # or just check less often
+```
+
+Auto-update is skipped automatically when `CI` is set, so a build agent never
+swaps versions mid-pipeline, and when `tgu` is running from a git checkout, so
+`npm install -g` can never overwrite a working copy. If an install fails twice
+(usually a global prefix that needs elevated permissions) it stops retrying and
+tells you the command to run yourself.
+
+**Worth deciding deliberately:** this tool holds a full Telegram account
+credential and can send messages. Auto-update means a future published version
+gains that access without you reviewing it. Published releases are built by the
+`publish.yml` workflow and carry [npm provenance](https://docs.npmjs.com/generating-provenance-statements),
+which ties each tarball to the commit and workflow run that produced it, so you
+can verify what you got:
+
+```sh
+npm view telegram-utils --json | jq .dist.attestations
+```
+
+If that trade is not one you want, `TGU_NO_UPDATE=1` leaves you in full control.
+
 ## Development
 
 ```sh
 pnpm install
-pnpm test              # 91 tests, node:test, no network
-npx tsc --noEmit
+pnpm test              # 104 tests, node:test, no network
+pnpm run typecheck
+pnpm run build
 ```
+
+CI runs the same three gates on Node 20 and 22, plus a check that the published
+tarball contains only runtime code (`scripts/check-package-contents.mjs`).
+
+### Releasing
+
+Publishing runs from GitHub Actions and needs no npm token: the workflow
+authenticates with a short-lived OIDC token via npm
+[trusted publishing](https://docs.npmjs.com/trusted-publishers).
+
+```sh
+npm version patch          # or minor / major; writes package.json and tags
+git push --follow-tags     # the v* tag triggers .github/workflows/publish.yml
+```
+
+The workflow refuses to publish if the tag disagrees with `package.json`, if the
+version is already on the registry, or if any CI gate fails.
 
 Work is tracked in `backlog/` (`backlog task list --plain`); the reasoning behind
 the build is in `backlog/decisions/`. `AGENTS.md` is the contract for anything
