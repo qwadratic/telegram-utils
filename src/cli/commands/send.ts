@@ -29,7 +29,7 @@ import { withAuthenticatedClient } from './shared.js'
  * Show who the id belongs to and require a yes.
  *
  * The id is the safe way to address a peer, but it is unreadable, so the one
- * thing a human cannot verify by looking at the command is whether 245605314 is
+ * thing a human cannot verify by looking at the command is whether 108844221 is
  * the person they meant. This resolves the id back to a name and asks. Skipped
  * when `--yes` was passed, which is the caller taking that responsibility.
  */

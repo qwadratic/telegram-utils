@@ -177,11 +177,11 @@ test('eval-32 nothing holding a Telegram credential imports gbrain or an LLM', (
 })
 
 test('eval-33 a peer id must be numeric, never a name or username', () => {
-  assert.equal(assertPeerId('245605314'), 245605314)
+  assert.equal(assertPeerId('108844221'), 108844221)
   assert.equal(assertPeerId(-1001234567890), -1001234567890)
   assert.equal(assertPeerId(' 42 '), 42)
 
-  for (const bad of ['@durov', 'Balint', 'self', '', '0', 'me', '1e999', 'NaN', '12.5']) {
+  for (const bad of ['@durov', 'Zoe', 'self', '', '0', 'me', '1e999', 'NaN', '12.5']) {
     assert.throws(
       () => assertPeerId(bad),
       /Not a numeric peer id/,

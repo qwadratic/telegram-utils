@@ -10,7 +10,7 @@ import { assertPeerId } from '../../peers/id.js'
  * `tgu dump <peer>` - one chat as a flat transcript on stdout.
  *
  * Errors go to stderr in plain text and the payload goes to stdout, so this
- * pipes: `tgu dump 245605314 --since last-7-days > thread.txt`.
+ * pipes: `tgu dump 108844221 --since last-7-days > thread.txt`.
  */
 export function registerDumpCommand(program: Command): void {
   program

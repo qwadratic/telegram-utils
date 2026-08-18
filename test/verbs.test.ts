@@ -176,17 +176,17 @@ test('eval-56 an empty chat sorts last instead of crashing the comparator', asyn
 })
 
 test('eval-57 an ASCII needle finds an accented name', () => {
-  assert.equal(foldAccents('Bálint'), 'balint')
+  assert.equal(foldAccents('Zoë'), 'zoe')
   assert.equal(foldAccents('Ünïcödé'), 'unicode')
 
   const peers = [
-    { id: 1, type: 'user', name: 'Bálint Kovács', username: null, bot: false, lastMessageAt: null, lastMessage: '' },
-    { id: 2, type: 'user', name: 'Someone Else', username: 'balint_fan', bot: false, lastMessageAt: null, lastMessage: '' },
+    { id: 1, type: 'user', name: 'Zoë Ünal', username: null, bot: false, lastMessageAt: null, lastMessage: '' },
+    { id: 2, type: 'user', name: 'Someone Else', username: 'zoe_fan', bot: false, lastMessageAt: null, lastMessage: '' },
     { id: 3, type: 'user', name: 'Nobody', username: null, bot: false, lastMessageAt: null, lastMessage: '' }
   ]
 
-  assert.deepEqual(matchPeers(peers, 'balint').map((p) => p.id), [1, 2], 'name and username both match')
-  assert.deepEqual(matchPeers(peers, 'BÁLINT').map((p) => p.id), [1, 2], 'needle is folded too')
+  assert.deepEqual(matchPeers(peers, 'zoe').map((p) => p.id), [1, 2], 'name and username both match')
+  assert.deepEqual(matchPeers(peers, 'ZOË').map((p) => p.id), [1, 2], 'needle is folded too')
   assert.deepEqual(matchPeers(peers, 'zzz'), [])
 })
 

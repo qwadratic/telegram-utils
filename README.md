@@ -6,7 +6,7 @@ a message when you mean to.
 
 `tgu` and `telegram-utils` are the same command; `tgu` is what the examples type.
 
-![Export journeys](demo/out/telegram-utils-export-journeys.gif)
+![Export journeys](https://raw.githubusercontent.com/qwadratic/telegram-utils/master/demo/out/telegram-utils-export-journeys.gif)
 
 ## Install
 
@@ -28,7 +28,7 @@ psst init                # a vault for this workspace
 tgu session login        # once, at a terminal: phone + code + 2FA
 
 tgu peers list --type user --no-bots     # who do I talk to?
-tgu dump 245605314 --since last-7-days   # read one thread
+tgu dump 108844221 --since last-7-days   # read one thread
 ```
 
 After `session login`, no command ever prompts for a password again. That is
@@ -87,9 +87,9 @@ a real person's chat is one typo away from the wrong person. Look the id up once
 read it with your own eyes, then use it.
 
 ```sh
-tgu peers find balint            # -> 478177378  Bálint Kovács  user
-tgu dump 478177378 --json | jq -r '.[].text'
-tgu media pull 478177378 --kind video --max 4 --to /tmp/clips
+tgu peers find zoe            # -> 904417238  Zoë Ünal  user
+tgu dump 904417238 --json | jq -r '.[].text'
+tgu media pull 904417238 --kind video --max 4 --to /tmp/clips
 ```
 
 `dump` writes the payload to stdout and everything else to stderr, so it pipes.

@@ -5,7 +5,7 @@ import type { TelegramClient } from '@mtcute/node'
  *
  * WHY this is its own verb rather than a flag on export: every write operation
  * takes a NUMERIC peer id, never a name (see `src/send/index.ts`). Discovery is
- * therefore a separate, read-only step whose whole job is to turn "Balint" into
+ * therefore a separate, read-only step whose whole job is to turn "Zoe" into
  * an id a human has looked at. Merging the two would put fuzzy name matching on
  * the path that sends messages to real people, which is the mistake this
  * separation exists to make impossible.
@@ -34,7 +34,7 @@ function peerName(peer: Record<string, unknown>): string {
 /**
  * Strip diacritics so an ASCII needle matches an accented name.
  *
- * "balint" has to find "Bálint". Without this the operator types the name they
+ * "zoe" has to find "Zoë". Without this the operator types the name they
  * can type and gets nothing back, then reaches for a raw script.
  */
 export function foldAccents(text: string): string {
