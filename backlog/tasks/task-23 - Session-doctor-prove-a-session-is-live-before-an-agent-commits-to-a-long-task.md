@@ -1,9 +1,10 @@
 ---
 id: TASK-23
 title: 'Session doctor: prove a session is live before an agent commits to a long task'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-17 19:31'
+updated_date: '2026-08-18 03:58'
 labels:
   - session
   - agent-ux
@@ -35,3 +36,9 @@ WHY THIS FIRST: it is the only pain in the transcripts that spans four months an
 - [ ] #3 lastVerifiedAt is persisted and a staleness warning appears past the threshold
 - [ ] #4 doctor never prints the session string, only a fingerprint
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Shipped in 0.3.8 as 'tg doctor'. Offline checks plus one authenticated round trip, because a session can look perfect on disk and have been revoked from another device. Exit codes became a documented contract at the same time (0 ok, 1 bug, 2 usage, 3 needs-human, 4 not-configured, 5 busy, 6 upstream), since an orchestrator cannot act on 0/1 alone. Verified live: 54949 peers, 'authorised as ...', 3.5s; and from a vault-less directory: exit 3 with {"status":"needs_human_login","hint":"tg session login"}. evals 86-91.
+<!-- SECTION:NOTES:END -->
