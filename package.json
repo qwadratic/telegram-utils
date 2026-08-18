@@ -1,6 +1,6 @@
 {
   "name": "@qwadratic/tg",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Read, archive and send your own Telegram from the command line or an agent",
   "keywords": [
     "telegram",

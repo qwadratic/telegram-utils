@@ -257,13 +257,32 @@ export function installedVersion(prefix: string, packageName = PACKAGE_NAME): st
  * this function exists to avoid, and it would otherwise be recorded as a
  * success and never retried.
  */
+export function installArgs(packageName = PACKAGE_NAME, prefix: string | null = null): string[] {
+  const args = [
+    'install',
+    '-g',
+    `${packageName}@latest`,
+    // Re-resolve `latest` from the registry instead of a cached packument.
+    // Without this the install can quietly no-op: observed npm resolving
+    // @latest to the version already installed, minutes after a newer one was
+    // published, because the cached metadata had not expired. The install then
+    // exits 0 having changed nothing, and two of those in a row would trip the
+    // failure backoff and stop retrying a release that was perfectly fine.
+    '--prefer-online',
+    // Nobody reads the output of a detached background install.
+    '--no-fund',
+    '--no-audit'
+  ]
+  if (prefix) args.push('--prefix', prefix)
+  return args
+}
+
 export function installLatest(
   packageName = PACKAGE_NAME,
   moduleUrl = import.meta.url
 ): Promise<boolean> {
   const prefix = installPrefix(moduleUrl)
-  const args = ['install', '-g', `${packageName}@latest`]
-  if (prefix) args.push('--prefix', prefix)
+  const args = installArgs(packageName, prefix)
 
   const before = prefix ? installedVersion(prefix, packageName) : null
 

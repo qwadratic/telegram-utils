@@ -313,3 +313,21 @@ test('eval-79 the update targets the prefix this copy lives in', async () => {
   // A checkout has no prefix to install into, and must not invent one.
   assert.equal(installPrefix('file:///home/me/projects/telegram-utils/src/update/index.ts'), null)
 })
+
+test('eval-80 the install re-resolves latest instead of trusting a cached packument', async () => {
+  const { installArgs, PACKAGE_NAME } = await import('../src/update/index.js')
+
+  // Observed: npm resolved @latest to the version already installed, minutes
+  // after a newer one was published, because the cached metadata had not
+  // expired. The install exited 0 having changed nothing. Two of those trip the
+  // failure backoff and permanently stop retrying a release that was fine.
+  const args = installArgs(PACKAGE_NAME, '/opt/prefix')
+
+  assert.ok(args.includes('--prefer-online'), 'a stale cache must not silently no-op the update')
+  assert.deepEqual(args.slice(0, 3), ['install', '-g', `${PACKAGE_NAME}@latest`])
+  assert.deepEqual(args.slice(-2), ['--prefix', '/opt/prefix'], 'the prefix is passed explicitly')
+
+  // Without a resolvable prefix there is nothing to point npm at, and guessing
+  // is what wrote 0.3.3 into the wrong tree in the first place.
+  assert.ok(!installArgs(PACKAGE_NAME, null).includes('--prefix'))
+})
