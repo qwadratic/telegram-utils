@@ -97,15 +97,20 @@ jobs:
           test "$(tgu --version)" = "$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
           echo "version ok"
 
-          # init must work with no vault and no session, and must not connect.
-          tgu init --json > init.json || true
+          # init must succeed with no psst, no vault and no session, and must
+          # not connect. The runner has no psst, which is exactly the state a
+          # new user is in.
+          tgu init --json > init.json
           cat init.json
           node -e "
             const s = require('/tmp/ws/init.json');
-            if (s.gitignored !== true) { console.error('init did not gitignore the data dir'); process.exit(1) }
-            if (s.hasSession !== false) { console.error('a fresh workspace claims a session'); process.exit(1) }
+            const bad = [];
+            if (s.gitignored !== true) bad.push('did not gitignore the data dir');
+            if (s.hasSession !== false) bad.push('a fresh workspace claims a session');
+            if (s.psst !== false) bad.push('reported psst as present on a runner without it');
+            if (bad.length) { console.error(bad.join('; ')); process.exit(1) }
           "
-          echo "init ok"
+          test -d data/archive && echo "init ok"
 
           # The offline guards must fire without a session or a network call.
           tgu dump '@durov' 2>&1 | grep -q 'No usable Telegram session' && echo "session gate ok"

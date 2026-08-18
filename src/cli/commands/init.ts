@@ -2,7 +2,6 @@ import chalk from 'chalk'
 import type { Command } from 'commander'
 import { psstInstalled, scaffoldWorkspace, workspaceStatus } from '../../workspace/index.js'
 import { runCommand } from '../errors.js'
-import { OperatorError } from '../../errors.js'
 
 /**
  * `tgu init` - make the current directory a workspace.
@@ -18,22 +17,19 @@ export function registerInitCommand(program: Command): void {
     .option('--json', 'Machine-readable output')
     .action(async (options) => {
       await runCommand(async () => {
-        // A globally installed CLI cannot assume psst exists: it is a separate
-        // Rust binary that `npm i -g` does not bring along.
-        if (!psstInstalled()) {
-          throw new OperatorError(
-            'psst is not on PATH, and tgu stores its secrets in a psst vault.\n' +
-            '  Install it:  https://github.com/vpetrigo/psst\n' +
-            '  Or supply secrets directly as environment variables:\n' +
-            '    API_ID=... API_HASH=... TG_SESSION_STRING=... tgu ...'
-          )
-        }
-
+        // Scaffolding never depends on psst. `init` only makes directories and
+        // protects them from git, and a missing secret store is not a reason to
+        // refuse that - the README offers environment variables as a first-class
+        // alternative, so hard-failing here would contradict it and block anyone
+        // who chose that path. A globally installed CLI cannot assume psst
+        // exists: it is a separate Rust binary `npm i -g` does not bring along.
         const { created, ignoredAdded } = scaffoldWorkspace()
         const status = workspaceStatus()
 
         if (options.json) {
-          process.stdout.write(`${JSON.stringify({ ...status, created, ignoredAdded }, null, 2)}\n`)
+          process.stdout.write(
+            `${JSON.stringify({ ...status, psst: psstInstalled(), created, ignoredAdded }, null, 2)}\n`
+          )
           return
         }
 
@@ -52,10 +48,16 @@ export function registerInitCommand(program: Command): void {
         )
 
         console.log('')
-        if (!status.hasVault) {
+        if (!psstInstalled()) {
+          console.log(chalk.yellow('psst is not installed, so secrets have to come from the environment:'))
+          console.log(chalk.dim('       API_ID=... API_HASH=... tgu session login'))
+          console.log(
+            chalk.dim('       For unattended runs, install psst instead: https://github.com/vpetrigo/psst')
+          )
+        } else if (!status.hasVault) {
           console.log(chalk.yellow('Next:  psst init'))
         }
-        if (!status.hasApiCredentials) {
+        if (psstInstalled() && !status.hasApiCredentials) {
           console.log(
             chalk.yellow('Next:  psst set API_ID && psst set API_HASH') +
             chalk.dim('   (or keep them in your global vault as TG_API_ID / TG_API_HASH)')
