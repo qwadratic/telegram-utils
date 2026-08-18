@@ -288,7 +288,7 @@ If that trade is not one you want, `TGU_NO_UPDATE=1` leaves you in full control.
 
 ```sh
 pnpm install
-pnpm test              # 104 tests, node:test, no network
+pnpm test              # node:test, no network, no framework
 pnpm run typecheck
 pnpm run build
 ```
