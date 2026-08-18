@@ -4,13 +4,12 @@ title: 'Revoke tg-saved''s Telegram authorization, then delete its session artef
 status: To Do
 assignee: []
 created_date: '2026-08-05 00:37'
-updated_date: '2026-08-18 05:17'
+updated_date: '2026-08-18 06:53'
 labels:
   - security
   - cleanup
   - human
-dependencies:
-  - TASK-11
+dependencies: []
 priority: high
 ordinal: 12000
 ---
@@ -39,9 +38,5 @@ Size: S — three clicks and two deletes, in an order that matters.
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-STILL LIVE AND STILL UNREVOKED, verified 2026-08-18: ~/.config/gbrain/telegram.session.db is present on this machine. That is a full Telegram auth key belonging to the deleted tg-saved project - anyone holding it is logged in as the operator, with no password and no 2FA in the way, and it has been sitting there since at least 2026-08-05.
-
-ORDER MATTERS, and it is the reverse of the intuitive one: REVOKE FIRST in Telegram (Settings > Privacy & Security > Active Sessions), THEN delete the file. Deleting first leaves a live authorisation on Telegram's side with nothing local left to identify which row in Active Sessions to revoke.
-
-This is now the oldest open security item in the repo and the only one that cannot be fixed by code.
+UNBLOCKED 2026-08-18 after review. It had been gated behind task-11, which is gated behind writing a prose doc - so a LIVE full-account auth key waited on documentation. Verified that nothing is actually needed first: revoking happens in the Telegram app and deletes nothing locally, and the checkpoint value task-11 needs (lastMessageId 1730595) is already written into task-11's own text, so revocation cannot destroy it. Three clicks. Do it today.
 <!-- SECTION:NOTES:END -->

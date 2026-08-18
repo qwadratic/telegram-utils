@@ -1,6 +1,7 @@
 import assert from 'node:assert'
 import test from 'node:test'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join as joinPath } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { renderReport, summarise, type Check } from '../src/doctor/index.js'
 import { EXIT } from '../src/exit-codes.js'
@@ -9,6 +10,14 @@ import { exitCodeFor } from '../src/cli/errors.js'
 import { assertGolden } from './helpers.js'
 
 const ok = (name: string): Check => ({ name, status: 'ok', detail: 'fine' })
+
+/** Every .ts under a directory, recursively. */
+function sourceFilesOf(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = joinPath(dir, e.name)
+    return e.isDirectory() ? sourceFilesOf(p) : e.name.endsWith('.ts') ? [p] : []
+  })
+}
 
 test('eval-86 a dead session is needs_human_login, not a generic failure', () => {
   // This is the whole reason doctor exists. Auth failing mid-task is the most
@@ -96,4 +105,51 @@ test('eval-91 exit codes are a stable contract, and errors carry one', () => {
   const src = (p: string) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf-8')
   assert.match(src('../src/session/lock.ts'), /EXIT\.busy/, 'LockHeldError must exit busy')
   assert.match(src('../src/session/index.ts'), /EXIT\.needsHuman/, 'no-session must exit needsHuman')
+})
+
+test('eval-93 every documented exit code is actually emitted somewhere', () => {
+  // AGENTS.md publishes a 7-code taxonomy as a contract. Two of them - usage(2)
+  // and upstream(6) - were defined, documented, and emitted by nothing, so a
+  // bad --since exited 4 (not_configured) and a crashed gbrain did too. A
+  // published contract that the binary does not implement is documentation, not
+  // a contract, which is the exact failure this repo keeps finding elsewhere.
+  const files = sourceFilesOf(fileURLToPath(new URL('../src/', import.meta.url)))
+  const emitted = new Set<string>()
+  for (const f of files) {
+    if (f.endsWith('exit-codes.ts')) continue
+    for (const m of readFileSync(f, 'utf-8').matchAll(/EXIT\.(\w+)/g)) emitted.add(m[1])
+  }
+  for (const name of Object.keys(EXIT)) {
+    assert.ok(emitted.has(name), `EXIT.${name} is documented but emitted nowhere in src/`)
+  }
+})
+
+test('eval-94 failure classes are distinguishable, not all "not configured"', () => {
+  // An agent must tell a bad argument from a missing login from a busy lock
+  // from an upstream outage, because the correct response differs for each.
+  assert.equal(new OperatorError('x').exitCode, EXIT.notConfigured, 'the default')
+  assert.equal(new OperatorError('x', EXIT.usage).exitCode, EXIT.usage)
+
+  const src = (p: string) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf-8')
+  // A malformed peer reference or date is the caller's mistake: usage.
+  assert.match(src('../src/peers/ref.ts'), /EXIT\.usage/)
+  assert.match(src('../src/peers/id.ts'), /EXIT\.usage/)
+  assert.match(src('../src/cli/args.ts'), /EXIT\.usage/)
+  // Zero search results is a bad needle, not a broken workspace.
+  assert.match(src('../src/cli/commands/peers.ts'), /No chat matches[\s\S]{0,200}EXIT\.usage/)
+  // gbrain or the network failing is upstream: retry is reasonable there.
+  assert.match(src('../src/ship/index.ts'), /exitCode = EXIT\.upstream/)
+})
+
+test('eval-95 --json failures print a JSON envelope on stdout', () => {
+  // Without this, `tg ... --json | jq` on a failure yields an empty stream and a
+  // status code, so the consumer that most needs to distinguish "no results"
+  // from "not configured" from "broken" cannot.
+  const src = readFileSync(fileURLToPath(new URL('../src/cli/errors.ts', import.meta.url)), 'utf-8')
+  assert.match(src, /wantsJson/, 'the handler must know whether --json was asked for')
+  assert.match(src, /process\.stdout\.write/, 'the envelope goes to stdout, beside the payload')
+  assert.match(src, /"ok": false|ok: false/, 'and it is explicitly a failure')
+  // Both handlers, not just the pretty one.
+  const guards = [...src.matchAll(/if \(wantsJson\(\)\) \{/g)]
+  assert.equal(guards.length, 2, 'both handleChalkError and handlePlainError must emit it')
 })

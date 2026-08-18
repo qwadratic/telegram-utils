@@ -23,7 +23,7 @@ import { registerUpdateCommand } from './cli/commands/update.js'
 import { registerDoctorCommand } from './cli/commands/doctor.js'
 import { scheduleUpdateCheck } from './update/index.js'
 
-const VERSION = '0.3.9'
+const VERSION = '0.3.10'
 
 const program = new Command()
   .name('tg')

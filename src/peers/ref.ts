@@ -1,5 +1,6 @@
 import type { TelegramClient } from '@mtcute/node'
 import { OperatorError } from '../errors.js'
+import { EXIT } from '../exit-codes.js'
 
 /**
  * How a human names a chat on the command line.
@@ -47,7 +48,8 @@ function invalid(raw: string, why: string): OperatorError {
     '    108844221            a numeric id (from `tg peers find <name>`)\n' +
     '    @durov               a username\n' +
     '    https://t.me/durov   a public link\n' +
-    '    me                   your own Saved Messages'
+    '    me                   your own Saved Messages',
+    EXIT.usage
   )
 }
 

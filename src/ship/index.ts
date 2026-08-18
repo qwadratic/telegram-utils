@@ -20,6 +20,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statS
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { OperatorError } from '../errors.js'
+import { EXIT } from '../exit-codes.js'
 
 /**
  * The environment handed to gbrain, built by allowlist.
@@ -81,6 +82,18 @@ export interface ShipPlanEntry {
  */
 export class ShipError extends OperatorError {
   override name = 'ShipError'
+
+  /**
+   * Defaults to `upstream`, not the OperatorError default of `not-configured`.
+   *
+   * A gbrain crash, a network failure or an unroutable archive is not a broken
+   * workspace: retrying later is a reasonable response, where retrying a missing
+   * API key is not. A cron wrapper needs to tell those apart to decide whether
+   * to alert or to back off.
+   */
+  constructor(message: string, exitCode = EXIT.upstream) {
+    super(message, exitCode)
+  }
 }
 
 /**

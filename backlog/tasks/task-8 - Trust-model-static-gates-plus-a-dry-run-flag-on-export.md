@@ -4,7 +4,7 @@ title: Trust-model static gates plus a --dry-run flag on export
 status: In Progress
 assignee: []
 created_date: '2026-08-05 00:36'
-updated_date: '2026-08-18 05:17'
+updated_date: '2026-08-18 06:53'
 labels:
   - evals
   - security
@@ -48,7 +48,5 @@ Size: S — greps and one flag.
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-STATUS 2026-08-18: static-gate half DONE (evals 29-39, plus 84 and 92 added later). The --dry-run flag on export is still MISSING - verified: 'tg export chats --help' has no --dry-run. That is all that remains on this task.
-
-WHY IT STILL MATTERS: export is the long, credential-holding, rate-limited operation. Being able to see which chats it WOULD touch, and how many messages that implies, before committing to a multi-hour run against Telegram, is the difference between a confident run and a hopeful one. 'tg ship --dry-run' already sets the precedent for what the output should look like.
+AC #1 AND #3 ARE NOW UNSATISFIABLE and must be rewritten before this task is worked. They demand 'zero sendText|sendMedia anywhere in src/' and 'zero gbrain in src/', both of which were deliberately overturned: src/send/ exists by decision D13 and src/ship/ talks to gbrain by design. The real gates that replaced them are evals 29-32, 48 and 84, which are stronger because they fence rather than forbid. Only AC #5 (export --dry-run) is still outstanding; #4 and #6 are worth keeping. Rewrite the AC to match the fences that exist, or split the --dry-run work into its own task and close this one.
 <!-- SECTION:NOTES:END -->

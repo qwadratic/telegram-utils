@@ -26,6 +26,18 @@ Exit codes are the contract. Act on them, do not parse prose:
 | 5 | busy | another run holds the lock. Wait and retry |
 | 6 | upstream | Telegram, gbrain or the network failed. Not your fault; retry with backoff |
 
+Every code above is emitted by real code paths; eval-93 fails the suite if any
+becomes decorative. When you pass `--json`, a failure prints a JSON envelope on
+**stdout** alongside the exit code, so a piped consumer never sees an empty
+stream and a bare number:
+
+```json
+{ "ok": false, "error": { "code": "usage", "exit": 2, "message": "...", "detail": "..." } }
+```
+
+Zero results is `usage` (2), not `not_configured` (4): a needle that matched
+nothing is a bad search term, not a broken workspace.
+
 ## Run commands, do not ask for passwords
 
 There is no session password prompt. `openSession()` in `src/session/index.ts`

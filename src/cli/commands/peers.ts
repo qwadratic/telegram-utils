@@ -2,6 +2,7 @@ import type { Command } from 'commander'
 import { listPeers, matchPeers, renderPeers } from '../../peers/index.js'
 import { runCommand } from '../errors.js'
 import { OperatorError } from '../../errors.js'
+import { EXIT } from '../../exit-codes.js'
 import { withAuthenticatedClient } from './shared.js'
 import { parseSince } from '../args.js'
 
@@ -32,7 +33,7 @@ export function registerPeersCommand(program: Command): void {
         const since = options.since ? parseSince(options.since) : undefined
         const limit = Number.parseInt(options.limit, 10)
         if (!Number.isFinite(limit) || limit <= 0) {
-          throw new OperatorError(`--limit must be a positive number, got ${options.limit}`)
+          throw new OperatorError(`--limit must be a positive number, got ${options.limit}`, EXIT.usage)
         }
 
         const found = await withAuthenticatedClient((tg) =>
@@ -64,7 +65,7 @@ export function registerPeersCommand(program: Command): void {
 
         const limit = Number.parseInt(options.limit, 10)
         if (!Number.isFinite(limit) || limit <= 0) {
-          throw new OperatorError(`--limit must be a positive number, got ${options.limit}`)
+          throw new OperatorError(`--limit must be a positive number, got ${options.limit}`, EXIT.usage)
         }
 
         const found = await withAuthenticatedClient(async (tg) =>
@@ -77,13 +78,16 @@ export function registerPeersCommand(program: Command): void {
         // the first of several people is how the wrong chat gets read or texted.
         if (options.idOnly) {
           if (found.length === 0) {
-            throw new OperatorError(`No chat matches ${JSON.stringify(needle)}.`)
+            // Not "not configured": the needle simply matched nothing. An agent
+            // must be able to tell a bad search term from a broken workspace.
+            throw new OperatorError(`No chat matches ${JSON.stringify(needle)}.`, EXIT.usage)
           }
           if (found.length > 1) {
             throw new OperatorError(
               `${found.length} chats match ${JSON.stringify(needle)}, so there is no single id:\n` +
               found.map((p) => `    ${p.id}  ${p.name}${p.username ? ` (@${p.username})` : ''}`).join('\n') +
-              '\n  Narrow the search, or pass one of these ids directly.'
+              '\n  Narrow the search, or pass one of these ids directly.',
+              EXIT.usage
             )
           }
           process.stdout.write(`${found[0].id}\n`)

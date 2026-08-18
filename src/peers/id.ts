@@ -1,4 +1,5 @@
 import { OperatorError } from '../errors.js'
+import { EXIT } from '../exit-codes.js'
 
 /**
  * Require a numeric peer id.
@@ -22,7 +23,8 @@ export function assertPeerId(raw: string | number): number {
     throw new OperatorError(
       `Not a numeric peer id: ${JSON.stringify(String(raw))}\n` +
       '  Commands take an id, never a name or @username, so a typo cannot reach\n' +
-      '  the wrong chat. Find the id first:  tg peers find <name>'
+      '  the wrong chat. Find the id first:  tg peers find <name>',
+      EXIT.usage
     )
   }
   return id

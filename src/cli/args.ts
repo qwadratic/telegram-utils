@@ -1,4 +1,5 @@
 import { OperatorError } from '../errors.js'
+import { EXIT } from '../exit-codes.js'
 
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -61,7 +62,8 @@ export function parseSince(value: string): Date {
     throw new OperatorError(
       `Unrecognised date: ${JSON.stringify(value)}\n` +
       '  Use YYYY-MM-DD, or one of: today, yesterday, start-of-week,\n' +
-      '  start-of-month, start-of-year, last-7-days'
+      '  start-of-month, start-of-year, last-7-days',
+      EXIT.usage
     )
   }
   return parsed
