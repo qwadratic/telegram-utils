@@ -4,6 +4,7 @@ title: 'Absorb Saved Messages: drop inputPeerSelf from the folder skip list'
 status: To Do
 assignee: []
 created_date: '2026-08-05 00:36'
+updated_date: '2026-08-18 05:17'
 labels:
   - cleanup
   - sync
@@ -32,3 +33,13 @@ Size: S — one condition.
 - [ ] #3 a fixture-driven test covers the self peer being tracked rather than skipped
 - [ ] #4 no other peer type's skip behaviour changed — the folder-selection goldens are unchanged apart from the self entry
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+CONTEXT 2026-08-18: still genuinely open. src/folders/index.ts:58 continues to skip inputPeerSelf when enumerating a folder's peers, so Saved Messages is invisible to export even when it sits in a tracked folder.
+
+WHY IT MATTERS MORE NOW than when it was filed: Saved Messages is where the operator parks links, screenshots, voice notes and documents for later, and the whole point of the gbrain ingestion built on 2026-08-18 is to make that searchable. Everything else in the archive is conversation; Saved Messages is curation. It is also the default peer for 'tg media pull' and 'tg watch', so the rest of the CLI already treats it as first class.
+
+Note the interaction with TASK-30: Saved Messages is likely to be one of the largest single chats, so it will need per-month page splitting to be embeddable at all.
+<!-- SECTION:NOTES:END -->

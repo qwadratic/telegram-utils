@@ -1,10 +1,10 @@
 ---
 id: TASK-14
 title: 'Deploy artefacts: ship.sh, install.sh, tgu.service, tgu.timer'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-05 00:37'
-updated_date: '2026-08-09 20:29'
+updated_date: '2026-08-18 05:17'
 labels:
   - deploy
   - gbrain
@@ -56,17 +56,5 @@ Size: L — new artifact class, new host, security-relevant file modes; ship.sh 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Shipped as 'tgu ship' (src/ship/index.ts + src/cli/commands/ship.ts), NOT deploy/ship.sh. The human's call: one binary, but still a separate PROCESS. D7 survives on the process boundary, not on the file extension - tgu.service runs 'tgu export chats' and then 'tgu ship' as two ExecStart lines, so step 2 starts only after step 1 has exited, and eval-48 walks ship's transitive import graph and fails if a session, client, storage or mtcute module ever appears in it.
-
-Routing is TGU_BRAIN_MAP=7=personal,12=proximata, read from /etc/tgu.env. Deliberately env rather than a new persisted file - see the ponytail note in parseBrainMap. An unmapped or empty folder_ids fails the whole run; ship never defaults to a brain, because a private chat landing quietly in the wrong brain is the one failure nobody notices.
-
-Idempotency is the slug: tg/chat/<basename of the archive file>, which is already <sanitized-name>_<chat_id>, so it cannot drift from the file it names and it is gbrain's UNIQUE (source_id, slug) dedup key. Verified against the real gbrain 0.42.26: ship, then ship --all, then 'gbrain list' shows exactly one page.
-
-The .last-ship stamp is touched only on a clean run and is stamped with the run's START time, so a file modified mid-run is not skipped by the next pass. Failure leaves it alone entirely (eval-46).
-
-Heartbeat: one JSONL line per run, ok or error, at ~/.gbrain/integrations/telegram-utils/heartbeat.jsonl, overridable via TGU_HEARTBEAT_PATH so a test never writes into a real brain. A heartbeat failure never fails a successful ship - it is telemetry, not the job.
-
-AC#6 (install.sh idempotent) is NOT met: install.sh is deferred and deploy/README.md says so and why. There is no VM (TASK-16 has not happened), and a provisioning script nobody has ever executed is worse than a documented gap. The manual four-line equivalent is in deploy/README.md.
-
-AC#2's 'pinned by a golden file' is met by eval-40 as frozen literals rather than a .txt golden: the slug table is six lines and reads better as an assertion than as a file.
+CLOSED 2026-08-18, superseded in part. deploy/ now holds tg.service, tg.timer and README.md. ship.sh and install.sh were never built and are no longer wanted: the 2026-08-09 amendment turned deploy/ship.sh into the 'tg ship' subcommand, and the systemd unit runs the binary directly with two ExecStart lines. Remaining deployment work is TASK-16/17/18 (the VM itself), which are HUMAN/EXTERNAL.
 <!-- SECTION:NOTES:END -->

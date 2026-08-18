@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-08-05 00:38'
+updated_date: '2026-08-18 05:17'
 labels:
   - demo
   - rename
@@ -41,3 +42,11 @@ Size: M — the render is one script; frame-by-frame leak inspection is the work
 - [ ] #5 the render is copied with cp -p into ~/Desktop/demos/hobby/telegram-utils/final/ and its sources into source/
 - [ ] #6 ~/Desktop/demos/README.md has a row for it and MANIFEST.md records the original path and a Source rating of full, partial or none
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+CONTEXT 2026-08-18: the demo assets are still named telegram-utils-export-journeys.gif/.mp4 and the recording shows the OLD command name. The package is now @qwadratic/tg and the binary is 'tg', so the demo is doubly stale: wrong name on screen, wrong name in the file.
+
+The README currently points at the committed GIF by absolute raw.githubusercontent URL, so re-rendering must either keep the same filename or update that link in the same commit, otherwise the npm page shows a broken image.
+<!-- SECTION:NOTES:END -->

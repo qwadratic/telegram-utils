@@ -1,9 +1,10 @@
 ---
 id: TASK-24
 title: 'Cross-chat search: an encrypted local index and tgu grep'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-17 19:31'
+updated_date: '2026-08-18 05:17'
 labels:
   - search
   - agent-ux
@@ -38,3 +39,15 @@ WHY: this is the primitive being improvised by hand. It also makes 'dump' cheap 
 - [ ] #3 no module reachable from the index or grep path imports an LLM or gbrain (extends eval-32)
 - [ ] #4 a golden pins the ranked output for a fixture corpus
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+SUPERSEDED by TASK-26 on 2026-08-18, not built as written. This task specified 'an encrypted local index and tgu grep'. The autoplan review killed both halves with evidence:
+
+- The encrypted FTS5 index would have been a second full copy of every message sitting next to a live account credential, which the 2026-08-05 log names as THE hazard, and its 'encrypted at rest' claim was hollow because the key lives beside the ciphertext.
+- VERIFIED: FTS5 with unicode61 remove_diacritics 2 returns NOTHING for MATCH 'budapest' against 'Budapesten a rekruter irt'. It would have silently failed on Hungarian and Russian, which is a large share of this operator's chats.
+- rg over data/archive already answers the question today across 130 flat markdown files, at zero build cost.
+
+TASK-26 carries the surviving intent: ranked search over the existing archive first, FTS5 only when measured and only with a trigram companion table. The name also changed: 'tgu grep' is now 'tg search'.
+<!-- SECTION:NOTES:END -->

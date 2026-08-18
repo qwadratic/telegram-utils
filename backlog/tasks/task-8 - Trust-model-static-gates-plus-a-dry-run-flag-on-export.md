@@ -4,7 +4,7 @@ title: Trust-model static gates plus a --dry-run flag on export
 status: In Progress
 assignee: []
 created_date: '2026-08-05 00:36'
-updated_date: '2026-08-17 19:20'
+updated_date: '2026-08-18 05:17'
 labels:
   - evals
   - security
@@ -48,11 +48,7 @@ Size: S — greps and one flag.
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Static-gate half DONE 2026-08-17 as evals 29-39 in test/trust.test.ts (see backlog/decisions/2026-08-17-narrow-the-no-write-back-rule-and-build-the-missing-gates.md, D14). The decision log had cited evals 30/31/32 as existing enforcement; they did not exist -- the suite ran 1-9, 11-17, 22-28, 40-49 with 29-39 empty.
+STATUS 2026-08-18: static-gate half DONE (evals 29-39, plus 84 and 92 added later). The --dry-run flag on export is still MISSING - verified: 'tg export chats --help' has no --dry-run. That is all that remains on this task.
 
-Built: eval-29 write-RPC allowlist, eval-30 unattended import graphs cannot reach src/send/, eval-31 read verbs cannot either, eval-32 credential holders name no LLM/gbrain, eval-33 numeric peer ids only, eval-34 non-interactive refusal without --yes, eval-35/36 send log mode+content+corruption tolerance, eval-37 cap arithmetic incl. failures, eval-38 download path traversal, eval-39 single registration site.
-
-Both graph gates were tripwire-verified by injecting real violations (a write RPC in folders/status.ts fails eval-29; an import of send/index.js in sync/index.ts fails eval-30).
-
-STILL OPEN: the --dry-run flag on export that this task also asks for. Keeping the task open for that half.
+WHY IT STILL MATTERS: export is the long, credential-holding, rate-limited operation. Being able to see which chats it WOULD touch, and how many messages that implies, before committing to a multi-hour run against Telegram, is the difference between a confident run and a hopeful one. 'tg ship --dry-run' already sets the precedent for what the output should look like.
 <!-- SECTION:NOTES:END -->
