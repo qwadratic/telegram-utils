@@ -9,9 +9,9 @@ import {
   writeFileSync,
   writeSync
 } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { stateDir } from '../paths.js'
 
 /**
  * Keep a global install current, without ever slowing down a command.
@@ -44,9 +44,7 @@ import { fileURLToPath } from 'node:url'
 export const PACKAGE_NAME = '@qwadratic/tg'
 
 /** Where the check state lives: per USER, not per workspace, since the install is global. */
-export function stateDir(): string {
-  return process.env.TG_STATE_DIR?.trim() || join(homedir(), '.tg')
-}
+export { stateDir }
 
 export function stateFile(): string {
   return join(stateDir(), 'update-check.json')

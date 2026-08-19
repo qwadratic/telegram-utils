@@ -10,6 +10,17 @@ import { LOCK_PATH } from '../../session/lock.js'
 import { loadConfig } from '../../config/index.js'
 import { OperatorError } from '../../errors.js'
 import { runCommand, handlePlainError } from '../errors.js'
+import { EXIT } from '../../exit-codes.js'
+import { logSummary } from '../log.js'
+import { canPrompt } from '../../session/index.js'
+import {
+  describeAge,
+  forgetPhone,
+  historyEnabled,
+  maskPhone,
+  phonesPath,
+  readPhones
+} from '../../phones/index.js'
 
 /**
  * Short, non-reversible identifier for a session string.
@@ -77,6 +88,73 @@ export function registerSessionCommand(program: Command): void {
         } finally {
           await handle.close()
         }
+      })
+    })
+
+  session
+    .command('phones')
+    .description('Numbers offered at login on this machine')
+    .option('--forget <phone>', 'Remove one number, or "all"')
+    .option('--reveal', 'Print numbers in full (requires a terminal)')
+    .option('--json', 'Machine-readable output')
+    .action(async (options) => {
+      await runCommand(async () => {
+        if (options.forget) {
+          const removed = forgetPhone(options.forget)
+          logSummary(
+            removed === 0
+              ? 'No stored number matched; nothing removed.'
+              : `Forgot ${removed} number${removed === 1 ? '' : 's'}.`
+          )
+          return
+        }
+
+        // Masked unless a human explicitly asks and is there to read it. An
+        // agent piping --json into a transcript should not be the way an
+        // operator's phone numbers escape this machine.
+        const reveal = Boolean(options.reveal) && canPrompt()
+        if (options.reveal && !reveal) {
+          throw new OperatorError(
+            '--reveal needs an interactive terminal.\n' +
+            '  These are personal numbers; an unattended run has no one to show them to.',
+            EXIT.needsHuman
+          )
+        }
+
+        const records = readPhones()
+        const shown = records.map((record) => ({
+          phone: reveal ? record.phone : maskPhone(record.phone),
+          lastUsedAt: record.lastUsedAt,
+          useCount: record.useCount
+        }))
+
+        if (options.json) {
+          process.stdout.write(`${JSON.stringify(shown, null, 2)}\n`)
+          return
+        }
+
+        if (!historyEnabled()) {
+          console.log('Phone history is off (TG_NO_PHONE_HISTORY).')
+          return
+        }
+        if (shown.length === 0) {
+          console.log('No numbers remembered yet. The first login here will add one.')
+          return
+        }
+
+        for (const record of shown) {
+          console.log(
+            `${record.phone.padEnd(18)}  last used ${describeAge(record.lastUsedAt).padEnd(10)}` +
+            `  ${record.useCount} login${record.useCount === 1 ? '' : 's'}`
+          )
+        }
+        console.log(
+          chalk.dim(
+            `\nStored at ${phonesPath()}, 0600.` +
+            `${reveal ? '' : '  Use --reveal to see them in full.'}` +
+            '\nForget one:  tg session phones --forget <number>   (or --forget all)'
+          )
+        )
       })
     })
 

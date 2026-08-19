@@ -1,3 +1,4 @@
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { setting } from './env.js'
 
@@ -43,3 +44,19 @@ export const STATE_PATH = join(ARCHIVE_DIR, 'sync-state.json')
 
 /** Append-only record of every message this workspace has sent. */
 export const SEND_LOG_PATH = join(DATA_DIR, 'sent.jsonl')
+
+/**
+ * Per-USER state, shared by every workspace on this machine.
+ *
+ * The opposite of DATA_DIR on purpose. DATA_DIR holds one workspace's Telegram
+ * authorisation and must never be shared; this holds facts about the person and
+ * the install - which npm version was last checked, which numbers this human
+ * logs in with. Keeping the phone list per workspace would make it empty in
+ * every new workspace, which is exactly when a suggestion is worth the most.
+ *
+ * A function rather than a const because the update evals point TG_STATE_DIR at
+ * a temp directory per test, so it has to be read at call time.
+ */
+export function stateDir(): string {
+  return process.env.TG_STATE_DIR?.trim() || join(homedir(), '.tg')
+}

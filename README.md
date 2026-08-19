@@ -385,6 +385,35 @@ The tour deliberately shows
 the guardrails refusing bad input, because refusing correctly is most of what
 this tool does.
 
+### Remembered phone numbers
+
+After a successful login, `tg` remembers the number in `~/.tg/phones.json`
+(0600, per user rather than per workspace, since the human is the same one each
+time). The next login offers an arrow-select list, newest first, with
+`Use a different number` always at the bottom.
+
+```
+?  Log in with which number?
+   +15550001111    last used 30m ago
+   +442071234567   last used 3d ago
+ > Use a different number
+```
+
+Only the number is stored - never the code, never the 2FA password - and only
+after Telegram has accepted it, so the list never fills with numbers that do not
+work. At most five are kept.
+
+```sh
+tg session phones                        # masked, newest first
+tg session phones --reveal               # in full; needs a terminal
+tg session phones --forget +15550001111  # or --forget all
+TG_NO_PHONE_HISTORY=1 tg session login   # never read or written
+```
+
+`--json` and the default listing are masked. Full numbers appear only behind
+`--reveal`, which refuses without a terminal: an unattended run has no one to
+show them to, and `--json` is what an agent pastes into a transcript.
+
 ### The agent skill
 
 `skill/SKILL.md` is the source of truth for agents and ships in the package. See

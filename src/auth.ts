@@ -1,7 +1,8 @@
 import { TelegramClient, tl, User, SentCode } from '@mtcute/node'
-import { text, password, isCancel, intro, outro, spinner } from '@clack/prompts'
+import { text, password, select, isCancel, intro, outro, spinner } from '@clack/prompts'
 import chalk from 'chalk'
 import { withFloodWaitHandling } from './utils/flood-wait.js'
+import { ANOTHER_NUMBER, historyEnabled, phoneChoices, readPhones, rememberPhone } from './phones/index.js'
 
 /**
  * Telegram errors that all mean the same thing operationally: this auth key is
@@ -28,6 +29,50 @@ export async function checkSession(tg: TelegramClient): Promise<User | null> {
   }
 }
 
+async function typePhoneNumber(): Promise<string> {
+  const phone = await text({
+    message: 'Enter your phone number (with country code):',
+    placeholder: '+1234567890',
+    validate: (value) => {
+      if (!value || !value.match(/^\+?[0-9]{7,15}$/)) {
+        return 'Please enter a valid phone number'
+      }
+    }
+  })
+  if (isCancel(phone)) {
+    outro(chalk.yellow('Authentication cancelled'))
+    process.exit(0)
+  }
+  return phone
+}
+
+/**
+ * Offer the numbers this machine has logged in with before, newest first.
+ *
+ * Falls straight through to typing when there is no history or the operator
+ * switched it off, so the first login is unchanged.
+ *
+ * The full number is shown rather than a masked one: this list exists to be
+ * chosen from, and two numbers on the same country code are indistinguishable
+ * once masked. Anywhere the value can outlive the terminal - `--json`, a
+ * report - it is masked instead.
+ */
+async function askForPhone(): Promise<string> {
+  const remembered = historyEnabled() ? readPhones() : []
+  if (remembered.length === 0) return typePhoneNumber()
+
+  const choice = await select({
+    message: 'Log in with which number?',
+    options: phoneChoices(remembered)
+  })
+  if (isCancel(choice)) {
+    outro(chalk.yellow('Authentication cancelled'))
+    process.exit(0)
+  }
+
+  return choice === ANOTHER_NUMBER ? typePhoneNumber() : choice
+}
+
 export async function ensureAuthenticated(tg: TelegramClient): Promise<User> {
   intro(chalk.cyan('Telegram Authentication'))
 
@@ -43,20 +88,7 @@ export async function ensureAuthenticated(tg: TelegramClient): Promise<User> {
   }
   s.stop('No valid session found')
 
-  // Phone number
-  const phone = await text({
-    message: 'Enter your phone number (with country code):',
-    placeholder: '+1234567890',
-    validate: (value) => {
-      if (!value || !value.match(/^\+?[0-9]{7,15}$/)) {
-        return 'Please enter a valid phone number'
-      }
-    }
-  })
-  if (isCancel(phone)) {
-    outro(chalk.yellow('Authentication cancelled'))
-    process.exit(0)
-  }
+  const phone = await askForPhone()
 
   // Send code
   s.start('Sending verification code...')
@@ -64,6 +96,7 @@ export async function ensureAuthenticated(tg: TelegramClient): Promise<User> {
 
   // sendCode can return User if already logged in (with future auth tokens)
   if (sentCodeResult instanceof User) {
+    rememberPhone(phone)
     s.stop(chalk.green(`Already authenticated as ${sentCodeResult.firstName}!`))
     outro('Session restored!')
     return sentCodeResult
@@ -96,6 +129,7 @@ export async function ensureAuthenticated(tg: TelegramClient): Promise<User> {
         phoneCode: code
       })
     )
+    rememberPhone(phone)
     s.stop(chalk.green(`Authenticated as ${user.firstName}!`))
     outro('Authentication complete!')
     return user
@@ -114,6 +148,7 @@ export async function ensureAuthenticated(tg: TelegramClient): Promise<User> {
 
       s.start('Verifying 2FA...')
       const user = await withFloodWaitHandling(() => tg.checkPassword(twoFaPass))
+      rememberPhone(phone)
       s.stop(chalk.green(`Authenticated as ${user.firstName}!`))
       outro('Authentication complete!')
       return user

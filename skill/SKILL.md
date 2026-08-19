@@ -153,6 +153,18 @@ History reads pause 1.5s per 100 messages, and `FLOOD_WAIT` is caught and waited
 out. A first full export of a large account takes hours. Prefer `--since` and
 `--limit` over exporting everything, and never run two exports at once.
 
+## Phone numbers
+
+`tg session login` remembers the numbers this human has used and offers them in
+an arrow-select picker. You will never see that picker: it only appears at a
+terminal, and only a human can log in anyway.
+
+`tg session phones --json` masks every number. Do not reach for `--reveal` - it
+refuses without a terminal by design. These are personal numbers belonging to
+someone who may not be watching this run, and there is no task here that needs
+them in full. If the operator wants one removed:
+`tg session phones --forget <number>`.
+
 ## What it does not do
 
 - It does not read anyone else's Telegram. It is the operator's own session.
